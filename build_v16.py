@@ -90,6 +90,10 @@ def main():
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>PrepSignals — GMAT guided debrief dashboard</title>
+<script>window.va=window.va||function(){{(window.vaq=window.vaq||[]).push(arguments);}};</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<script>window.si=window.si||function(){{(window.siq=window.siq||[]).push(arguments);}};</script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
 <script>{chart_js}</script>
 <style>
 :root{{--bg:#080d18;--bg2:#0d1524;--card:#172033;--card2:#101827;--text:#edf3fb;--accent:#22d3ee;--a2:#a78bfa;

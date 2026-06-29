@@ -29,6 +29,39 @@ The builder writes:
 
 - `dashboard_v16.html`
 
+## Analytics
+
+This is a static Vercel dashboard, not a Next.js app. Web Analytics is enabled
+with Vercel's static script in the generated HTML:
+
+```html
+<script>
+  window.va = window.va || function () {
+    (window.vaq = window.vaq || []).push(arguments);
+  };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+```
+
+You do not need `npm i @vercel/analytics` unless the project is later converted
+to a Next.js/React app.
+
+Speed Insights is wired the same way for this static page:
+
+```html
+<script>
+  window.si = window.si || function () {
+    (window.siq = window.siq || []).push(arguments);
+  };
+</script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
+```
+
+You do not need `npm i @vercel/speed-insights` unless the project is later
+converted to a Next.js/React app. If Vercel's Speed Insights dashboard later
+shows a project-specific static HTML script path, use that path in place of
+`/_vercel/speed-insights/script.js`.
+
 ## Files
 
 | File | Role |
