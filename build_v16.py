@@ -7,7 +7,7 @@ self-contained dashboard_v16.html.
 What changed vs v15:
   1. Ships as a guided dashboard with a calmer premium study-intelligence palette.
   2. Inlines a vendored Chart.js bundle so the static page does not depend on a CDN.
-  3. Adds chart explainer/finding blocks that update with the active filters.
+  3. Keeps chart cards compact so the data has more room to breathe.
   4. Improves mobile UX with compact filters, stacked charts, and debrief cards.
   5. Keeps the v15 data/privacy contract: Debrief rows only, raw post bodies stripped,
      and original-source links preserved.
@@ -142,10 +142,6 @@ a{{color:var(--accent);text-decoration:none}}a:hover{{text-decoration:underline}
 .cd h2{{font-size:.98rem;margin-bottom:.16rem;color:var(--text);font-weight:780;letter-spacing:0}}
 .cd .sub{{font-size:.74rem;color:var(--muted);margin-bottom:.65rem;line-height:1.45}}
 canvas{{max-height:300px}}.tall canvas{{max-height:390px}}
-.chart-note{{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin:.15rem 0 .85rem}}
-.chart-note div{{background:rgba(8,13,24,.74);border:1px solid rgba(148,163,184,.18);border-radius:8px;padding:.55rem .62rem;font-size:.74rem;line-height:1.45;color:#c9d5e4}}
-.chart-note b{{display:block;color:var(--accent);font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.12rem}}
-.chart-note .finding b{{color:var(--a3)}}
 
 /* ---- sticky filter toolbar ---- */
 .fbar{{position:sticky;top:58px;z-index:50;background:rgba(12,19,34,.94);backdrop-filter:blur(14px);
@@ -195,7 +191,7 @@ th:hover{{color:var(--text)}}
 .tag-other{{background:#374151;color:#d1d5db}}
 .tag-maybe-promo{{background:#854d0e;color:#fef08a}}.tag-self-study{{background:#1e3a5f;color:#93c5fd}}
 .cnt{{color:var(--muted);font-size:.8rem;margin-bottom:.3rem}}
-.src{{display:inline-block;padding:1px 5px;border-radius:4px;font-size:.64rem;font-weight:700}}
+.src{{display:inline-flex;align-items:center;white-space:nowrap;line-height:1.1;padding:.13rem .42rem;border-radius:5px;font-size:.64rem;font-weight:800;vertical-align:middle}}
 .src-reddit{{background:#ff4500;color:#fff}}.src-gmat-club{{background:#2563eb;color:#fff}}.src-other{{background:#374151;color:#d1d5db}}
 
 .hm{{border-collapse:collapse;font-size:.74rem;width:100%}}
@@ -283,8 +279,6 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
   .gr{{grid-template-columns:minmax(0,1fr);gap:.75rem;margin-bottom:.75rem}}
   .cd{{min-width:0;overflow:hidden;border-radius:8px;padding:.82rem .75rem}}
   .cd h2{{font-size:.9rem}}.cd .sub{{font-size:.68rem;line-height:1.35}}
-  .chart-note{{grid-template-columns:1fr;gap:.42rem;margin-bottom:.65rem}}
-  .chart-note div{{font-size:.69rem;padding:.48rem .55rem}}
   canvas{{max-width:100%}}
   .ov{{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}}
   .ov table{{min-width:760px}}.hm{{min-width:620px}}
@@ -405,23 +399,22 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
   <div class="section-grid" id="sectionCards"></div>
 
   <div class="gr">
-    <div class="cd"><h2>Total score distribution</h2><div class="sub">Shows how filtered posts are spread across official scores. Taller bars mean more examples at that score; click a bar to read the matching posts.</div><div class="chart-note"><div><b>What this shows</b>How many matching debriefs landed at each official GMAT Focus score.</div><div class="finding"><b>Finding</b><span id="find-c1">Updating with filters...</span></div></div><canvas id="c1"></canvas></div>
-    <div class="cd"><h2>Where each tier's weak spot is</h2><div class="sub">Compares median Q, V, and DI inside each score band. Read one band at a time: the shortest bar is usually the section that kept that tier from moving higher.</div><div class="chart-note"><div><b>What this shows</b>Median section scores by total-score tier, grouped into Q, V, and DI.</div><div class="finding"><b>Finding</b><span id="find-c2">Updating with filters...</span></div></div><canvas id="c2"></canvas></div>
+    <div class="cd"><h2>Total score distribution</h2><div class="sub">Shows how filtered posts are spread across official scores. Taller bars mean more examples at that score; click a bar to read the matching posts.</div><canvas id="c1"></canvas></div>
+    <div class="cd"><h2>Where each tier's weak spot is</h2><div class="sub">Compares median Q, V, and DI inside each score band. Read one band at a time: the shortest bar is usually the section that kept that tier from moving higher.</div><canvas id="c2"></canvas></div>
   </div>
 
   <div class="gr">
-    <div class="cd"><h2>How big a jump is realistic?</h2><div class="sub">Buckets reported start-to-official score gains. This shows the size of moves people actually described; click a bucket to inspect the debriefs behind it.</div><div class="chart-note"><div><b>What this shows</b>Reported point gains from starting score to official result, grouped into practical ranges.</div><div class="finding"><b>Finding</b><span id="find-cGain">Updating with filters...</span></div></div><canvas id="cGain"></canvas></div>
-    <div class="cd"><h2>Resources used</h2><div class="sub">Counts named resources among achieved-score debriefs. This is popularity, not effectiveness; click a resource to see how people used it.</div><div class="chart-note"><div><b>What this shows</b>Named resources students mentioned in their public debriefs.</div><div class="finding"><b>Finding</b><span id="find-cFreq">Updating with filters...</span></div></div><canvas id="cFreq"></canvas></div>
+    <div class="cd"><h2>How big a jump is realistic?</h2><div class="sub">Buckets reported start-to-official score gains. This shows the size of moves people actually described; click a bucket to inspect the debriefs behind it.</div><canvas id="cGain"></canvas></div>
+    <div class="cd"><h2>Resources used</h2><div class="sub">Counts named resources among achieved-score debriefs. This is popularity, not effectiveness; click a resource to see how people used it.</div><canvas id="cFreq"></canvas></div>
   </div>
 
   <div class="gr">
-    <div class="cd tall"><h2>Prep time vs score change</h2><div class="sub">Plots debriefs that report both prep length and score gain. X = weeks studied, Y = points gained, color = final score; the dashed line shows the overall trend.</div><div class="chart-note"><div><b>What this shows</b>Each dot is a debrief with both prep duration and reported score gain.</div><div class="finding"><b>Finding</b><span id="find-c3">Updating with filters...</span></div></div><canvas id="c3"></canvas></div>
-    <div class="cd"><h2>Does more study time help?</h2><div class="sub">Shows the median achieved score for each prep-time bucket. Use it to compare broad ranges, then hover for sample size or click to read examples.</div><div class="chart-note"><div><b>What this shows</b>Median official scores among debriefs that stated prep length.</div><div class="finding"><b>Finding</b><span id="find-c5">Updating with filters...</span></div></div><canvas id="c5"></canvas></div>
+    <div class="cd tall"><h2>Prep time vs score change</h2><div class="sub">Plots debriefs that report both prep length and score gain. X = weeks studied, Y = points gained, color = final score; the dashed line shows the overall trend.</div><canvas id="c3"></canvas></div>
+    <div class="cd"><h2>Does more study time help?</h2><div class="sub">Shows the median achieved score for each prep-time bucket. Use it to compare broad ranges, then hover for sample size or click to read examples.</div><canvas id="c5"></canvas></div>
   </div>
 
   <div class="gr full">
     <div class="cd"><h2>Which section tactics show up with higher scores?</h2><div class="sub">Each bar is the median total score for debriefs that used that section tactic. The dashed line is the filtered median; bars to the right are associated with stronger outcomes, not guaranteed causes.</div>
-      <div class="chart-note"><div><b>What this shows</b>Section-specific tactics ranked by the median total score of debriefs that mention them.</div><div class="finding"><b>Finding</b><span id="find-c4">Updating with filters...</span></div></div>
       <div class="trio">
         <div><div class="seclbl" style="color:#38bdf8">Quant</div><canvas id="c4q"></canvas></div>
         <div><div class="seclbl" style="color:#a78bfa">Verbal</div><canvas id="c4v"></canvas></div>
@@ -432,7 +425,6 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
 
   <div class="gr full">
     <div class="cd"><h2>What each score tier actually did</h2><div class="sub">Shows the share of debriefs in each band that used each tactic. Read down a column to see that tier's common playbook; darker cells mean the tactic appeared more often.</div>
-      <div class="chart-note"><div><b>What this shows</b>How common each tactic is inside each total-score band.</div><div class="finding"><b>Finding</b><span id="find-heatmap">Updating with filters...</span></div></div>
       <div class="ov"><div id="heatmap"></div></div>
       <div class="legend"><span>0%</span><span class="sw" style="background:rgba(56,189,248,.08)"></span><span class="sw" style="background:rgba(56,189,248,.4)"></span><span class="sw" style="background:rgba(56,189,248,.75)"></span><span class="sw" style="background:rgba(56,189,248,1)"></span><span>most common</span></div>
     </div>
@@ -955,17 +947,16 @@ function openSectionInsight(key){{
     <div class="snote">These charts analyze debriefs that report a ${{cfg.short}} score and contain ${{cfg.name}} tactics or section notes. They show directional patterns from achieved-score debriefs, not guaranteed score-delta causes.</div>
     <div class="smetric-row">${{stats}}</div>
     <div class="sgrid">
-      <div class="cd"><h2>What separates high ${{cfg.short}} scorers?</h2><div class="sub">Overrepresentation among ${{cfg.short}}88-90 debriefs versus the rest of this section cohort. Click a bar to read high-score examples.</div><div class="chart-note"><div><b>What this shows</b>Tactics that appear more often among high ${{cfg.short}} scorers.</div><div class="finding"><b>Finding</b><span id="find-secDiff">Updating...</span></div></div><canvas id="secDiff"></canvas></div>
-      <div class="cd"><h2>Playbook bundles</h2><div class="sub">Common combinations of section tactics and general habits, ranked by median final ${{cfg.short}} score. Click a bundle to inspect examples.</div><div class="chart-note"><div><b>What this shows</b>Repeated tactic combinations and their median section outcomes.</div><div class="finding"><b>Finding</b><span id="find-secBundles">Updating...</span></div></div><canvas id="secBundles"></canvas></div>
+      <div class="cd"><h2>What separates high ${{cfg.short}} scorers?</h2><div class="sub">Overrepresentation among ${{cfg.short}}88-90 debriefs versus the rest of this section cohort. Click a bar to read high-score examples.</div><canvas id="secDiff"></canvas></div>
+      <div class="cd"><h2>Playbook bundles</h2><div class="sub">Common combinations of section tactics and general habits, ranked by median final ${{cfg.short}} score. Click a bundle to inspect examples.</div><canvas id="secBundles"></canvas></div>
     </div>
     <div class="sgrid three">
-      <div class="cd"><h2>${{cfg.name}} bottlenecks</h2><div class="sub">Debriefs where ${{cfg.short}} is the lowest reported section. Shows what those students mention most.</div><div class="chart-note"><div><b>What this shows</b>Common tactics among debriefs where ${{cfg.short}} is the lowest split.</div><div class="finding"><b>Finding</b><span id="find-secBottleneck">Updating...</span></div></div><canvas id="secBottleneck"></canvas></div>
-      <div class="cd"><h2>Prep time vs ${{cfg.short}} outcome</h2><div class="sub">Median final ${{cfg.short}} score by prep-length bucket, among debriefs that stated prep time.</div><div class="chart-note"><div><b>What this shows</b>Median ${{cfg.short}} score across broad prep-duration buckets.</div><div class="finding"><b>Finding</b><span id="find-secPrep">Updating...</span></div></div><canvas id="secPrep"></canvas></div>
-      <div class="cd"><h2>Section balance</h2><div class="sub">X = final ${{cfg.short}} score, Y = weaker of the other two reported sections. Click a point to read the debrief.</div><div class="chart-note"><div><b>What this shows</b>Whether high ${{cfg.short}} scores also came with balanced companion sections.</div><div class="finding"><b>Finding</b><span id="find-secBalance">Updating...</span></div></div><canvas id="secBalance"></canvas></div>
+      <div class="cd"><h2>${{cfg.name}} bottlenecks</h2><div class="sub">Debriefs where ${{cfg.short}} is the lowest reported section. Shows what those students mention most.</div><canvas id="secBottleneck"></canvas></div>
+      <div class="cd"><h2>Prep time vs ${{cfg.short}} outcome</h2><div class="sub">Median final ${{cfg.short}} score by prep-length bucket, among debriefs that stated prep time.</div><canvas id="secPrep"></canvas></div>
+      <div class="cd"><h2>Section balance</h2><div class="sub">X = final ${{cfg.short}} score, Y = weaker of the other two reported sections. Click a point to read the debrief.</div><canvas id="secBalance"></canvas></div>
     </div>
     <div class="sgrid full">
       <div class="cd"><h2>Playbook by ${{cfg.short}} score band</h2><div class="sub">Share of each section-score band mentioning section tactics and core general habits. Click a cell to read matching debriefs.</div>
-        <div class="chart-note"><div><b>What this shows</b>How tactics vary across ${{cfg.short}} score bands.</div><div class="finding"><b>Finding</b><span id="find-secHeat">Updating...</span></div></div>
         <div class="ov"><div id="secHeat"></div></div>
         <div class="legend"><span>0%</span><span class="sw" style="background:rgba(56,189,248,.08)"></span><span class="sw" style="background:rgba(56,189,248,.4)"></span><span class="sw" style="background:rgba(56,189,248,.75)"></span><span class="sw" style="background:rgba(56,189,248,1)"></span><span>most common</span></div>
       </div>
@@ -1151,13 +1142,16 @@ DETAIL_CSS = r"""
 .dcard h3{font-size:.92rem;font-weight:700;margin-bottom:.1rem}
 .dsub{font-size:.72rem;color:var(--muted);margin-bottom:.7rem;line-height:1.4}
 .dcap{font-size:.68rem;color:var(--muted);margin-top:.5rem;line-height:1.45}
-.dcard canvas{max-height:260px}
+.dchart{position:relative;height:280px;min-height:280px;width:100%;margin-top:.15rem}
+.dchart canvas{display:block;width:100%!important;height:100%!important;max-height:none}
 .dsec-title{font-size:1.05rem;font-weight:800;margin:1.4rem 0 .2rem}
 .dsec-titsub{font-size:.74rem;color:var(--muted);margin-bottom:.7rem}
 .dsecs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
 @media(max-width:860px){.dsecs{grid-template-columns:1fr}}
+@media(max-width:760px){.dchart{height:240px;min-height:240px}}
 .dsec{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--c,#38bdf8);
   border-radius:10px;padding:.85rem .9rem}
+.dsummary,.dst,.dcard,.dsec{animation:riseIn .42s ease both}
 .dsec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
 .dsec-name{font-weight:800;font-size:.9rem;color:var(--c)}
 .dsec-score{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.05rem;color:var(--c)}
@@ -1178,6 +1172,7 @@ DETAIL_CSS = r"""
 DETAIL_JS = r"""
 /* ---------- post detail page ---------- */
 let PCH = {};
+let activePostId = null;
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function fmtDate(iso){
   const d = new Date(iso + 'T00:00:00');
@@ -1199,10 +1194,276 @@ function secBlock(name, color, score, tactics, sents){
     <div class="dsec-h"><span class="dsec-name">${name}</span>${score?`<span class="dsec-score">${score}</span>`:''}</div>
     ${chips ? `<div class="dchips">${chips}</div>` : ''}${body}</div>`;
 }
+function destroyPostCharts(){
+  Object.values(PCH).forEach(c=>{ try{c.destroy()}catch(e){} });
+  PCH = {};
+}
+function chartLib(){
+  return window.Chart || (typeof Chart !== 'undefined' ? Chart : null);
+}
+function chartBoxReady(canvas){
+  const box = canvas && canvas.closest('.dchart');
+  return !!(box && box.clientWidth > 40 && box.clientHeight > 40);
+}
+function sizeFallbackCanvas(canvas){
+  const box = canvas.closest('.dchart');
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const w = Math.max(320, Math.round((box.clientWidth || canvas.clientWidth || 520)));
+  const h = Math.max(220, Math.round((box.clientHeight || canvas.clientHeight || 280)));
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  const g = canvas.getContext && canvas.getContext('2d');
+  if(g) g.setTransform(dpr,0,0,dpr,0,0);
+  return {g,w,h};
+}
+function createPostChart(slot, canvas, config, fallback){
+  const C = chartLib();
+  if(!C){
+    fallback && fallback();
+    return null;
+  }
+  try{
+    const chart = new C(canvas, config);
+    PCH[slot] = chart;
+    return chart;
+  }catch(err){
+    console.error('Post detail chart failed:', err);
+    fallback && fallback();
+    return null;
+  }
+}
+function drawEmptyCanvas(canvas, message){
+  const s = sizeFallbackCanvas(canvas), g = s.g;
+  if(!g) return;
+  g.clearRect(0,0,s.w,s.h);
+  g.fillStyle = '#94a3b8';
+  g.font = '600 13px Inter, system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.fillText(message, s.w/2, s.h/2);
+}
+function detailTipShow(hit, e){
+  const el = document.getElementById('tip');
+  if(!el || !hit) return;
+  el.textContent = '';
+  if(hit.head){
+    const h = document.createElement('span');
+    h.className = 'th';
+    h.textContent = hit.head;
+    el.appendChild(h);
+  }
+  const b = document.createElement('span');
+  b.textContent = (hit.lines || []).join('\n');
+  el.appendChild(b);
+  el.classList.add('on');
+  detailTipMove(e);
+}
+function detailTipMove(e){
+  const el = document.getElementById('tip');
+  if(!el || !e) return;
+  const pad = 14, r = el.getBoundingClientRect();
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if(x + r.width > innerWidth - 8) x = e.clientX - r.width - pad;
+  if(y + r.height > innerHeight - 8) y = e.clientY - r.height - pad;
+  el.style.left = Math.max(6, x) + 'px';
+  el.style.top = Math.max(6, y) + 'px';
+}
+function detailTipHide(){
+  const el = document.getElementById('tip');
+  if(el) el.classList.remove('on');
+}
+function chartEase(t){
+  t = Math.max(0, Math.min(1, t));
+  return 1 - Math.pow(1 - t, 4);
+}
+function hitTestNative(hits, x, y){
+  for(const hit of hits || []){
+    if(hit.type === 'point'){
+      const dx = x - hit.x, dy = y - hit.y;
+      if(Math.sqrt(dx*dx + dy*dy) <= (hit.r || 6) + 8) return hit;
+    }else if(hit.type === 'line'){
+      if(Math.abs(x - hit.x) <= 7 && y >= hit.y1 && y <= hit.y2) return hit;
+    }else if(hit.type === 'rect'){
+      if(x >= hit.x - 4 && x <= hit.x + hit.w + 4 && y >= hit.y - 4 && y <= hit.y + hit.h + 4) return hit;
+    }
+  }
+  return null;
+}
+function registerNativeChart(slot, canvas, draw, animate=true){
+  if(PCH[slot] && PCH[slot].destroy) PCH[slot].destroy();
+  const state = {canvas, hover:null, hits:[], raf:null};
+  const render = progress => {
+    state.hits = draw(progress, state.hover && state.hover.id) || [];
+  };
+  const onMove = e => {
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const hit = hitTestNative(state.hits, x, y);
+    if((hit && hit.id) !== (state.hover && state.hover.id)){
+      state.hover = hit;
+      render(1);
+    }
+    if(hit){
+      canvas.style.cursor = 'help';
+      detailTipShow(hit, e);
+    }else{
+      canvas.style.cursor = 'default';
+      detailTipHide();
+    }
+  };
+  const onLeave = () => {
+    state.hover = null;
+    canvas.style.cursor = 'default';
+    detailTipHide();
+    render(1);
+  };
+  canvas.addEventListener('pointermove', onMove);
+  canvas.addEventListener('pointerleave', onLeave);
+  state.destroy = () => {
+    canvas.removeEventListener('pointermove', onMove);
+    canvas.removeEventListener('pointerleave', onLeave);
+    if(state.raf) cancelAnimationFrame(state.raf);
+    detailTipHide();
+  };
+  PCH[slot] = state;
+
+  if(animate && !(typeof REDUCED_MOTION !== 'undefined' && REDUCED_MOTION)){
+    const start = Date.now(), dur = 680;
+    const step = () => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      render(chartEase(t));
+      if(t < 1) state.raf = requestAnimationFrame(step);
+    };
+    step();
+  }else{
+    render(1);
+  }
+}
+function drawTimelineFallback(canvas, tl, progress=1, hoverId=null){
+  const s = sizeFallbackCanvas(canvas), g = s.g;
+  if(!g) return [];
+  g.clearRect(0,0,s.w,s.h);
+  const m = {l:58,r:22,t:18,b:38};
+  const scores = tl.filter(p=>p.score).map(p=>p.score);
+  if(!scores.length){ drawEmptyCanvas(canvas, 'No score data to plot.'); return []; }
+  const hits = [];
+  const ymin = Math.max(195, Math.min(...scores) - 25), ymax = 810;
+  const xFor = i => m.l + (tl.length <= 1 ? (s.w-m.l-m.r)/2 : i * (s.w-m.l-m.r) / (tl.length-1));
+  const yFor = v => m.t + (ymax-v) * (s.h-m.t-m.b) / (ymax-ymin);
+  g.strokeStyle = 'rgba(148,163,184,.16)';
+  g.lineWidth = 1;
+  [ymin,650,700,750,810].filter((v,i,a)=>v>=ymin&&a.indexOf(v)===i).forEach(v=>{
+    const y = yFor(v);
+    g.beginPath(); g.moveTo(m.l,y); g.lineTo(s.w-m.r,y); g.stroke();
+    g.fillStyle = '#cbd5e1'; g.font = '12px Inter, system-ui, sans-serif'; g.textAlign = 'right';
+    g.fillText(String(Math.round(v)), m.l-8, y+4);
+  });
+  const prepIdx = tl.findIndex(p=>p.kind==='prep');
+  if(prepIdx >= 0){
+    const x = xFor(prepIdx);
+    const y2 = m.t + (s.h-m.t-m.b) * progress;
+    g.save(); g.strokeStyle = hoverId === 'prep' ? '#fbbf24' : '#f59e0b'; g.setLineDash([5,4]); g.lineWidth = hoverId === 'prep' ? 2 : 1.5;
+    g.beginPath(); g.moveTo(x,m.t); g.lineTo(x,y2); g.stroke();
+    g.restore(); g.fillStyle = '#f59e0b'; g.font = '700 11px Inter, system-ui, sans-serif'; g.textAlign = 'left';
+    g.fillText('prep', x+5, m.t+12);
+    const p = tl[prepIdx];
+    hits.push({type:'line',id:'prep',x,y1:m.t,y2:s.h-m.b,head:'Prep started',lines:[fmtDate(p.date), p.weeks ? `${p.weeks} weeks before the post` : 'Date estimated']});
+  }
+  const pts = tl.map((p,i)=>p.score?{x:xFor(i),y:yFor(p.score),p}:null).filter(Boolean);
+  if(pts.length > 1){
+    g.strokeStyle = '#38bdf8'; g.lineWidth = 2;
+    const maxSeg = progress * (pts.length - 1);
+    g.beginPath(); g.moveTo(pts[0].x, pts[0].y);
+    for(let i=1;i<pts.length;i++){
+      const seg = Math.max(0, Math.min(1, maxSeg - (i - 1)));
+      if(seg <= 0) break;
+      const a = pts[i-1], b = pts[i];
+      g.lineTo(a.x + (b.x-a.x)*seg, a.y + (b.y-a.y)*seg);
+      if(seg < 1) break;
+    }
+    g.stroke();
+  }
+  pts.forEach((pt,i)=>{
+    const reveal = pts.length <= 1 ? progress : Math.max(0, Math.min(1, progress * pts.length - i));
+    const baseR = pt.p.final ? 6 : 5;
+    const r = (hoverId === 'pt'+i ? baseR + 3 : baseR) * (.55 + .45 * reveal);
+    if(reveal <= 0) return;
+    g.fillStyle = pt.p.final ? '#34d399' : '#38bdf8';
+    g.beginPath(); g.arc(pt.x, pt.y, r, 0, Math.PI*2); g.fill();
+    if(hoverId === 'pt'+i){
+      g.strokeStyle = '#e0f2fe'; g.lineWidth = 2;
+      g.beginPath(); g.arc(pt.x, pt.y, r + 3, 0, Math.PI*2); g.stroke();
+    }
+    const lines = ['Score: ' + pt.p.score];
+    if(pt.p.final && pt.p.q) lines.push(`Q${pt.p.q} · V${pt.p.v} · DI${pt.p.di}`);
+    const pc = pctOf(pt.p.score); if(pc) lines.push(pc + 'th percentile');
+    if(pt.p.est) lines.push('Date estimated');
+    if(pt.p.final) lines.push('Official score');
+    hits.push({type:'point',id:'pt'+i,x:pt.x,y:pt.y,r:baseR,head:fmtDate(pt.p.date),lines});
+  });
+  g.fillStyle = '#cbd5e1'; g.font = '11px Inter, system-ui, sans-serif'; g.textAlign = 'center';
+  tl.forEach((p,i)=>g.fillText(fmtDate(p.date), xFor(i), s.h-14));
+  g.save(); g.translate(16, s.h/2); g.rotate(-Math.PI/2); g.fillText('GMAT score', 0, 0); g.restore();
+  return hits;
+}
+function drawSectionFallback(canvas, labels, taker, typical, bm, progress=1, hoverId=null){
+  const s = sizeFallbackCanvas(canvas), g = s.g;
+  if(!g) return [];
+  g.clearRect(0,0,s.w,s.h);
+  const hits = [];
+  const m = {l:62,r:18,t:32,b:42}, ymin = 60, ymax = 90;
+  const yFor = v => m.t + (ymax-v) * (s.h-m.t-m.b) / (ymax-ymin);
+  g.strokeStyle = 'rgba(148,163,184,.16)';
+  [60,65,70,75,80,85,90].forEach(v=>{
+    const y = yFor(v);
+    g.beginPath(); g.moveTo(m.l,y); g.lineTo(s.w-m.r,y); g.stroke();
+    g.fillStyle = '#cbd5e1'; g.font = '12px Inter, system-ui, sans-serif'; g.textAlign = 'right';
+    g.fillText(String(v), m.l-8, y+4);
+  });
+  const colors = ['#38bdf8','#a78bfa','#34d399'], groupW = (s.w-m.l-m.r)/labels.length;
+  labels.forEach((lab,i)=>{
+    const cx = m.l + groupW*i + groupW/2, bw = Math.min(34, groupW*.22);
+    [[taker[i], colors[i], -bw*.65, 'This taker'], [typical[i], '#475569', bw*.65, `Typical ${bm.band} (n=${bm.n})`]].forEach(([v,c,off,series],si)=>{
+      if(v==null) return;
+      const id = `bar-${i}-${si}`;
+      const fullY = yFor(v), fullH = yFor(ymin)-fullY;
+      const h = fullH * progress, y = yFor(ymin) - h;
+      g.fillStyle = c; g.fillRect(cx+off-bw/2, y, bw, h);
+      if(hoverId === id){
+        g.strokeStyle = '#e0f2fe'; g.lineWidth = 2;
+        g.strokeRect(cx+off-bw/2 - 2, y - 2, bw + 4, h + 4);
+      }
+      hits.push({type:'rect',id,x:cx+off-bw/2,y:fullY,w:bw,h:fullH,head:`${series}: ${lab}`,lines:[`Score: ${v}`]});
+    });
+    g.fillStyle = '#cbd5e1'; g.font = '12px Inter, system-ui, sans-serif'; g.textAlign = 'center';
+    g.fillText(lab, cx, s.h-14);
+  });
+  g.fillStyle = '#38bdf8'; g.fillRect(m.l, 11, 10, 8);
+  g.fillStyle = '#cbd5e1'; g.font = '11px Inter, system-ui, sans-serif'; g.textAlign = 'left';
+  g.fillText('This taker', m.l+14, 19);
+  g.fillStyle = '#475569'; g.fillRect(m.l+92, 11, 10, 8);
+  g.fillStyle = '#cbd5e1';
+  g.fillText(`Typical ${bm.band} (n=${bm.n})`, m.l+106, 19);
+  return hits;
+}
+function renderPostCharts(det, row, attempt=0){
+  const tlCanvas = document.getElementById('pTimeline');
+  const secCanvas = document.getElementById('pSection');
+  const ready = (!tlCanvas || chartBoxReady(tlCanvas)) && (!secCanvas || chartBoxReady(secCanvas));
+  if(!ready && attempt < 8){
+    requestAnimationFrame(()=>renderPostCharts(det,row,attempt+1));
+    return;
+  }
+  destroyPostCharts();
+  renderTimeline(det, row, true);
+  renderSectionChart(row, true);
+}
 
 function openPost(id){
   const row = D.find(d => d.id === id);
   if(!row) return;
+  activePostId = id;
   const wasOn = document.getElementById('postpage').classList.contains('on');
   const det = DETAIL[id] || {};
   const pct = pctOf(row.total);
@@ -1254,14 +1515,14 @@ function openPost(id){
       <div class="dgrid2">
         <div class="dcard"><h3>Score timeline</h3>
           <div class="dsub">Every score the author reported, over time — plus the back-calculated prep start.</div>
-          <canvas id="pTimeline"></canvas>
+          <div class="dchart"><canvas id="pTimeline"></canvas></div>
           <p class="dcap"><b>Amber line</b> = prep started${row.prep_weeks?` (${row.prep_weeks}w back from the post)`:' (prep length not stated)'}.
           ◆ = date estimated (spread across the prep window); ● = date the author stated or the official sitting (the post date).
           Scores are as reported and may mix mocks with official sittings.</p>
         </div>
         <div class="dcard"><h3>Section scores vs typical</h3>
           <div class="dsub">This taker's Q / V / DI against the median of debriefs in the same score band.</div>
-          <canvas id="pSection"></canvas></div>
+          <div class="dchart"><canvas id="pSection"></canvas></div></div>
       </div>
       <div class="dcard"><h3>Resources used</h3><div class="dsub">What the author named in the debrief.</div>${resChips}</div>
       <h3 class="dsec-title">Strategy by section</h3>
@@ -1277,19 +1538,18 @@ function openPost(id){
   document.getElementById('postpage').classList.add('on');
   document.body.style.overflow = 'hidden';
   document.querySelector('#postpage .dbody').scrollTop = 0;
-  Object.values(PCH).forEach(c=>{ try{c.destroy()}catch(e){} }); PCH = {};
-  requestAnimationFrame(() => {
-    renderTimeline(det, row);
-    renderSectionChart(row);
-    Object.values(PCH).forEach(c=>{ try{c.resize(); c.update('none');}catch(e){} });
-  });
+  destroyPostCharts();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if(activePostId === id) renderPostCharts(det, row);
+  }));
   // exactly one history entry per open session, always tracking the current post
   if(wasOn) history.replaceState({pp:id}, ''); else history.pushState({pp:id}, '');
 }
 function doCloseP(){
   const pp = document.getElementById('postpage');
   pp.classList.remove('on'); pp.innerHTML = '';
-  Object.values(PCH).forEach(c=>{ try{c.destroy()}catch(e){} }); PCH = {};
+  activePostId = null;
+  destroyPostCharts();
   if(!document.getElementById('drill').classList.contains('on') && !document.getElementById('sectionpage').classList.contains('on')) document.body.style.overflow = '';
 }
 function closeP(){ if(history.state && history.state.pp){ history.back(); } else { doCloseP(); } }
@@ -1302,46 +1562,14 @@ document.addEventListener('keydown', e => {
   }
 }, true);
 
-function renderTimeline(det, row){
+function renderTimeline(det, row, animate=true){
   const ctx = document.getElementById('pTimeline'); if(!ctx) return;
   const tl = det.timeline || [];
   if(!tl.length){ ctx.closest('.dcard').querySelector('.dsub').textContent='No score data to plot.'; return; }
-  const labels = tl.map(p => fmtDate(p.date));
-  const data   = tl.map(p => p.kind==='prep' ? null : p.score);
-  const colors = tl.map(p => p.final ? '#34d399' : '#38bdf8');
-  const styles = tl.map(p => p.est ? 'rectRot' : 'circle');
-  const radii  = tl.map(p => p.kind==='prep' ? 0 : (p.final ? 7 : 5));
-  const prepIdx = tl.findIndex(p => p.kind==='prep');
-  const scores = tl.filter(p => p.score).map(p => p.score);
-  const ymin = Math.max(195, Math.min(...scores) - 25);
-  const prepPlug = { id:'prepmark', afterDraw(c){
-    if(prepIdx < 0) return;
-    const x = c.scales.x.getPixelForValue(prepIdx), a = c.chartArea, g = c.ctx;
-    g.save(); g.strokeStyle='#f59e0b'; g.setLineDash([5,4]); g.lineWidth=1.5;
-    g.beginPath(); g.moveTo(x, a.top); g.lineTo(x, a.bottom); g.stroke();
-    g.setLineDash([]); g.fillStyle='#f59e0b'; g.font='bold 10px Inter,sans-serif'; g.textAlign='left';
-    g.fillText('▶ prep', x + 4, a.top + 11); g.restore();
-  }};
-  PCH.tl = new Chart(ctx, {
-    type:'line',
-    data:{ labels, datasets:[{ data, borderColor:'#38bdf8', backgroundColor:'#38bdf8',
-      pointBackgroundColor:colors, pointBorderColor:colors, pointStyle:styles,
-      pointRadius:radii, pointHoverRadius:8, tension:.2, spanGaps:false, borderWidth:2 }] },
-    options:{ plugins:{ legend:{display:false}, tooltip:{ callbacks:{
-        title: items => { const p = tl[items[0].dataIndex]; return fmtDate(p.date) + (p.est?' (date estimated)':''); },
-        label: c => { const p = tl[c.dataIndex];
-          if(p.kind==='prep') return 'Prep started';
-          const out = ['Score: ' + p.score];
-          if(p.final && p.q) out.push(`Q${p.q} · V${p.v} · DI${p.di}`);
-          const pc = pctOf(p.score); if(pc) out.push(pc + 'th percentile');
-          if(p.final) out.push('Official score'); return out; } } } },
-      scales:{ y:{ min:ymin, max:810, title:{display:true,text:'GMAT score'} },
-               x:{ title:{display:true,text:'Time →'}, ticks:{maxRotation:0,font:{size:10}} } } },
-    plugins:[prepPlug]
-  });
+  registerNativeChart('tl', ctx, (progress, hoverId) => drawTimelineFallback(ctx, tl, progress, hoverId), animate);
 }
 
-function renderSectionChart(row){
+function renderSectionChart(row, animate=true){
   const ctx = document.getElementById('pSection'); if(!ctx) return;
   if(!(row.q || row.v || row.di)){
     const card = ctx.closest('.dcard');
@@ -1349,17 +1577,10 @@ function renderSectionChart(row){
     ctx.remove(); return;
   }
   const bm = bandMed(row.total);
-  PCH.sec = new Chart(ctx, {
-    type:'bar',
-    data:{ labels:['Quant','Verbal','Data Insights'], datasets:[
-      { label:'This taker', data:[row.q,row.v,row.di],
-        backgroundColor:['#38bdf8','#a78bfa','#34d399'], borderRadius:4 },
-      { label:`Typical ${bm.band} (n=${bm.n})`, data:[bm.q,bm.v,bm.di],
-        backgroundColor:'#475569', borderRadius:4 } ] },
-    options:{ plugins:{ legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:12}},
-        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw==null?'—':c.raw}`}} },
-      scales:{ y:{ min:60, max:90, title:{display:true,text:'Section score (60–90)'} } } }
-  });
+  const labels = ['Quant','Verbal','Data Insights'];
+  const taker = [row.q,row.v,row.di];
+  const typical = [bm.q,bm.v,bm.di];
+  registerNativeChart('sec', ctx, (progress, hoverId) => drawSectionFallback(ctx, labels, taker, typical, bm, progress, hoverId), animate);
 }
 
 /* if the page is reloaded while a post was open, the DOM is blank but the
