@@ -1,0 +1,17 @@
+{
+  "name": "prepsignals",
+  "version": "1.0.0",
+  "description": "GMAT guided debrief dashboard",
+  "private": true,
+  "scripts": {
+    "build": "python3 build_v16.py"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.1.1"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arrpollo/PrepSignals"
+  }
+}
