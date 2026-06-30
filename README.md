@@ -1,33 +1,33 @@
-# PrepSignals — GMAT guided debrief dashboard v.16
+# PrepSignals — GMAT guided debrief dashboard v.17
 
 Ship-ready static PrepSignals dashboard over achieved-score GMAT debrief links.
-Open `dashboard_v16.html` in a browser after rebuilding; all data and Chart.js
+Open `dashboard_v17.html` in a browser after rebuilding; all data and Chart.js
 are embedded in the generated HTML.
 
-## What's new in v.16
+## What's new in v.17
 
-- Creates a more polished guided dashboard from v.15.
-- Inlines a vendored Chart.js bundle so charts do not depend on a runtime CDN.
-- Uses a deeper study-intelligence palette: ink background, slate panels, cyan
-  insight accents, emerald outcomes, amber resource/prep signals, and violet
-  Verbal cues.
-- Adds chart explanation blocks with filter-aware findings.
-- Improves mobile UX with compact filters, stacked chart cards, and debrief
-  cards instead of relying only on a wide table.
-- Keeps the v.15 data/privacy contract: Debrief rows only, raw post bodies
-  stripped before embedding, and original-source links preserved.
+- Adds a mobile-first "Choose your path" launcher for Quant, Verbal, DI,
+  high-score debriefs, resources, and score jumps.
+- Moves recommended high-signal debrief cards near the top of the dashboard.
+- Makes mobile debrief cards fully tappable and limits initial mobile list
+  rendering behind a "Show more" control.
+- Replaces the expanded mobile filter block with a bottom-sheet style panel.
+- Replaces the wide tactic heatmap on mobile with stacked tactic cards by score
+  band.
+- Adds guarded Vercel Web Analytics custom events without changing the static,
+  privacy-safe no-backend model.
 
 ## Rebuild
 
 From this folder:
 
 ```bash
-python3 build_v16.py
+python3 build_v17.py
 ```
 
 The builder writes:
 
-- `dashboard_v16.html`
+- `dashboard_v17.html`
 
 ## Analytics
 
@@ -66,8 +66,8 @@ shows a project-specific static HTML script path, use that path in place of
 
 | File | Role |
 |------|------|
-| `dashboard_v16.html` | Generated static dashboard. |
-| `build_v16.py` | Builds the dashboard from the embedded data files. |
+| `dashboard_v17.html` | Generated static dashboard. |
+| `build_v17.py` | Builds the dashboard from the embedded data files. |
 | `chart.umd.min.js` | Vendored Chart.js 4.4.7 browser bundle. |
 | `debriefs.json` | Per-post source rows with strategy items. |
 | `post_details.json` | Detail-page model: timeline, Q/V/DI notes, tactic chips. |

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""v.16 — PrepSignals guided dashboard.
+"""v.17 — PrepSignals mobile-first engagement dashboard.
 
 Presentation only. Reads debriefs.json + post_details.json and writes a
-self-contained dashboard_v16.html.
+self-contained dashboard_v17.html.
 
-What changed vs v15:
-  1. Ships as a guided dashboard with a calmer premium study-intelligence palette.
-  2. Inlines a vendored Chart.js bundle so the static page does not depend on a CDN.
-  3. Keeps chart cards compact so the data has more room to breathe.
-  4. Improves mobile UX with compact filters, stacked charts, and debrief cards.
-  5. Keeps the v15 data/privacy contract: Debrief rows only, raw post bodies stripped,
-     and original-source links preserved.
+What changed vs v16:
+  1. Adds a mobile-first "Choose your path" launcher above the chart grid.
+  2. Moves high-signal recommended debriefs earlier in the session.
+  3. Makes mobile debrief cards fully tappable and limits initial mobile rendering.
+  4. Replaces the phone filter expansion with a bottom-sheet style panel.
+  5. Adds safe custom analytics events while preserving the no-backend model.
 """
 import json
 from pathlib import Path
@@ -80,8 +79,8 @@ def main():
         chart_js=chart_js,
         detail_css=DETAIL_CSS, detail_js=DETAIL_JS, details_js=details_js,
     )
-    (BASE / "dashboard_v16.html").write_text(html)
-    print(f"dashboard_v16.html written. {len(debriefs)} debriefs, "
+    (BASE / "dashboard_v17.html").write_text(html)
+    print(f"dashboard_v17.html written. {len(debriefs)} debriefs, "
           f"{len(details)} detail pages.")
 
 
@@ -104,6 +103,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 html{{max-width:100%;overflow-x:hidden}}
 body{{font-family:Inter,-apple-system,system-ui,sans-serif;background:linear-gradient(180deg,#080d18 0%,#0b1220 48%,#080d18 100%);color:var(--text);line-height:1.55;
   width:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}}
+body.filter-open{{overflow:hidden}}
 a{{color:var(--accent);text-decoration:none}}a:hover{{text-decoration:underline}}
 
 /* ---- top nav ---- */
@@ -131,6 +131,34 @@ a{{color:var(--accent);text-decoration:none}}a:hover{{text-decoration:underline}
 .hero-pill{{border:1px solid rgba(34,211,238,.34);background:rgba(34,211,238,.08);color:#b8f4ff;border-radius:999px;
   padding:.28rem .62rem;font-size:.72rem;font-weight:800;white-space:nowrap}}
 
+.path-section{{margin:.2rem 0 1rem}}
+.path-head{{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:.5rem}}
+.path-head h2{{font-size:1rem;line-height:1.25;font-weight:850}}
+.path-head p{{font-size:.76rem;color:var(--muted);line-height:1.4}}
+.path-grid{{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.55rem}}
+.path-card{{appearance:none;background:linear-gradient(180deg,rgba(23,32,51,.98),rgba(13,21,35,.98));border:1px solid var(--border);
+  border-top:3px solid var(--pc,#22d3ee);border-radius:8px;color:var(--text);padding:.72rem .7rem;min-height:76px;
+  text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;gap:.3rem;box-shadow:var(--shadow);
+  transition:border-color .18s,transform .18s,background .18s}}
+.path-card:hover,.path-card:focus-visible{{border-color:var(--pc,#22d3ee);transform:translateY(-1px);outline:none;text-decoration:none}}
+.path-card b{{font-size:.86rem;line-height:1.18}}
+.path-card span{{font-size:.66rem;color:var(--muted);line-height:1.3}}
+
+.reco-section{{margin:.15rem 0 1rem}}
+.reco-head{{display:flex;align-items:flex-end;justify-content:space-between;gap:.8rem;margin-bottom:.5rem}}
+.reco-head h2{{font-size:1rem;font-weight:850;line-height:1.25}}
+.reco-head p{{font-size:.74rem;color:var(--muted);line-height:1.4}}
+.reco-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.65rem}}
+.debrief-card{{appearance:none;width:100%;font:inherit;color:var(--text);text-align:left;background:rgba(15,24,39,.98);
+  border:1px solid var(--border);border-radius:8px;padding:.78rem;box-shadow:var(--shadow);cursor:pointer;
+  transition:border-color .18s,transform .18s,background .18s}}
+.debrief-card:hover,.debrief-card:focus-visible{{border-color:rgba(34,211,238,.55);transform:translateY(-1px);outline:none;text-decoration:none}}
+.debrief-card .dtitle{{display:block;font-weight:850;line-height:1.28;color:var(--text);font-size:.86rem}}
+.action-cue{{display:inline-flex;align-items:center;margin-top:.55rem;color:var(--accent);font-weight:850;font-size:.72rem}}
+.action-cue::after{{content:"→";margin-left:.32rem}}
+.show-more{{display:none;width:100%;margin:.65rem 0 .1rem;background:#0b1120;color:var(--accent);border:1px solid var(--border);
+  border-radius:10px;min-height:46px;font-weight:850;cursor:pointer}}
+
 .sts{{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.55rem;margin:.9rem 0}}
 .st{{background:linear-gradient(180deg,rgba(31,43,64,.95),rgba(17,26,42,.95));border:1px solid var(--border);border-radius:8px;padding:.78rem .8rem;text-align:center;box-shadow:var(--shadow)}}
 .st .n{{font-size:1.45rem;font-weight:800;color:var(--accent)}}.st .l{{color:var(--muted);font-size:.7rem;margin-top:.1rem}}
@@ -148,6 +176,12 @@ canvas{{max-height:300px}}.tall canvas{{max-height:390px}}
   border:1px solid rgba(148,163,184,.2);border-radius:8px;padding:.78rem .85rem;margin:.2rem 0 1rem;
   box-shadow:0 10px 30px rgba(0,0,0,.32)}}
 .filter-toggle{{display:none}}
+.filter-backdrop,.filter-sheet-head,.filter-actions{{display:none}}
+.filter-close{{appearance:none;background:#0b1120;color:var(--text);border:1px solid var(--border);border-radius:9px;
+  min-width:40px;min-height:40px;font-size:1.1rem;font-weight:800;cursor:pointer}}
+.filter-actions button{{min-height:44px;border-radius:10px;font-weight:850;cursor:pointer}}
+.apply-mobile{{background:var(--accent);border:1px solid var(--accent);color:#08111f}}
+.close-mobile{{background:#0b1120;border:1px solid var(--border);color:var(--text)}}
 .fbar .frow{{display:flex;flex-wrap:wrap;gap:.7rem .9rem;align-items:end}}
 .fld{{display:flex;flex-direction:column;gap:.22rem}}
 .fld>span{{color:var(--muted);font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}}
@@ -202,6 +236,18 @@ th:hover{{color:var(--text)}}
 .hm tr.sec td.lab{{padding-top:.7rem;padding-bottom:.25rem;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}}
 .hm td.lab.sub{{padding-left:1.1rem;font-weight:500;cursor:help}}
 .hm .dot{{display:inline-block;width:.55rem;height:.55rem;border-radius:50%;margin-right:.45rem;vertical-align:middle}}
+.hmobile{{display:grid;gap:.7rem}}
+.hmobile-note{{font-size:.73rem;color:var(--muted);line-height:1.45;margin-bottom:.15rem}}
+.hm-band{{background:#0b1120;border:1px solid var(--border);border-radius:9px;padding:.68rem .7rem}}
+.hm-band h3{{display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-size:.84rem;line-height:1.25;margin-bottom:.45rem}}
+.hm-band h3 span{{font-size:.66rem;color:var(--muted);font-weight:700}}
+.hmob-list{{display:grid;gap:.38rem}}
+.hmob-row{{appearance:none;width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.48rem;background:rgba(23,32,51,.78);
+  border:1px solid rgba(148,163,184,.16);border-radius:8px;color:var(--text);padding:.48rem .52rem;text-align:left;cursor:pointer}}
+.hmob-row:hover,.hmob-row:focus-visible{{border-color:rgba(34,211,238,.55);outline:none}}
+.hmob-dot{{width:.55rem;height:.55rem;border-radius:999px;background:var(--hc,#38bdf8)}}
+.hmob-label{{font-size:.73rem;line-height:1.28;color:#dbeafe;min-width:0}}
+.hmob-pct{{font-size:.8rem;font-weight:850;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}}
 .legend{{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:var(--muted);margin-top:.5rem}}
 .legend .sw{{width:18px;height:12px;border-radius:2px}}
 .seclbl{{font-size:.78rem;font-weight:700;margin:.2rem 0 .1rem;text-align:center}}
@@ -221,13 +267,14 @@ th:hover{{color:var(--text)}}
 .mini-tag{{font-size:.62rem;font-weight:700;color:var(--text);background:#0b1120;border:1px solid var(--sec,#38bdf8);
   border-radius:999px;padding:.1rem .45rem}}
 .mobile-cards{{display:none}}
-.mcard{{background:rgba(15,24,39,.98);border:1px solid var(--border);border-radius:8px;padding:.78rem;margin:.55rem 0;box-shadow:var(--shadow)}}
-.mcard a{{font-weight:800;line-height:1.3;color:var(--text)}}
+.mcard{{margin:.55rem 0}}
 .mmeta{{display:flex;flex-wrap:wrap;gap:.35rem;margin:.5rem 0;color:var(--muted);font-size:.72rem}}
 .mmeta b{{color:var(--accent);font-size:.9rem}}
 .mres{{font-size:.7rem;color:#cbd5e1;line-height:1.4}}
 @keyframes riseIn{{from{{opacity:0;transform:translateY(8px)}}to{{opacity:1;transform:translateY(0)}}}}
+@keyframes focusPulse{{0%,100%{{box-shadow:var(--shadow)}}50%{{box-shadow:0 0 0 2px rgba(34,211,238,.55),var(--shadow)}}}}
 .cd,.section-card,.st{{animation:riseIn .42s ease both}}
+.focus-pulse{{animation:focusPulse .9s ease both!important}}
 button,select,input,a{{touch-action:manipulation}}
 button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{outline:2px solid var(--accent);outline-offset:2px}}
 @media(prefers-reduced-motion:reduce){{*,*::before,*::after{{animation:none!important;transition:none!important;scroll-behavior:auto!important}}}}
@@ -236,6 +283,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
 @media(max-width:600px){{.gr{{grid-template-columns:1fr}}}}
 /* on phones the decorative test pills don't fit alongside the brand + nav links */
 @media(max-width:720px){{.tests{{display:none}}.nav{{gap:.7rem;padding:.6rem .9rem}}.brand{{font-size:1rem}}}}
+@media(max-width:1100px){{.path-grid{{grid-template-columns:repeat(3,minmax(0,1fr))}}}}
 @media(max-width:760px){{
   .ctn{{width:100%;max-width:100%;overflow-x:clip;padding:.85rem .75rem 2.5rem}}
   .nav{{min-height:50px;gap:.55rem;padding:.55rem .75rem}}
@@ -244,14 +292,32 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
   .hero{{padding:.15rem 0 .65rem}}.hero h1{{font-size:1.22rem;line-height:1.2}}
   .hero p{{font-size:.82rem;line-height:1.45}}
   .hero{{display:block}}.hero-pills{{justify-content:flex-start;margin-top:.55rem}}
+  .path-section{{margin:.05rem 0 .78rem}}
+  .path-head{{display:block;margin-bottom:.45rem}}
+  .path-head h2{{font-size:.98rem}}
+  .path-head p{{font-size:.7rem;margin-top:.08rem}}
+  .path-grid{{grid-template-columns:repeat(2,minmax(0,1fr));gap:.48rem}}
+  .path-card{{min-height:66px;padding:.62rem .58rem;border-radius:9px}}
+  .path-card b{{font-size:.8rem}}.path-card span{{font-size:.62rem}}
+  .reco-section{{margin:.25rem 0 .85rem}}
+  .reco-head{{display:block;margin-bottom:.45rem}}
+  .reco-head h2{{font-size:.96rem}}.reco-head p{{font-size:.7rem;margin-top:.08rem}}
+  .reco-grid{{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:.12rem;margin-right:-.75rem;padding-right:.75rem}}
+  .reco-grid .debrief-card{{min-width:min(82vw,320px);scroll-snap-align:start}}
   .nt{{font-size:.72rem;line-height:1.42;padding:.55rem .65rem;margin-bottom:.75rem}}
   .fbar{{top:50px;margin:.1rem 0 .8rem;border-radius:12px;padding:.35rem;background:rgba(10,18,32,.96);
     max-height:none;overflow:visible;overscroll-behavior:contain}}
-  .fbar.open{{position:fixed;left:.75rem;right:.75rem;top:calc(env(safe-area-inset-top,0px) + 58px);z-index:220;
-    max-height:min(68dvh,620px);overflow-y:auto;padding:.45rem;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.55)}}
+  .filter-backdrop.on{{display:block;position:fixed;inset:0;z-index:210;background:rgba(2,6,23,.68);backdrop-filter:blur(3px)}}
+  .fbar.open{{position:fixed;left:0;right:0;top:auto;bottom:0;z-index:220;margin:0;
+    max-height:min(82dvh,720px);overflow-y:auto;padding:.72rem .75rem calc(.85rem + env(safe-area-inset-bottom,0px));
+    border-radius:18px 18px 0 0;box-shadow:0 -24px 70px rgba(0,0,0,.6)}}
   .filter-toggle{{display:flex;width:100%;align-items:center;gap:.75rem;justify-content:space-between;
     background:#0b1120;color:var(--text);border:1px solid var(--border);border-radius:8px;
     padding:.56rem .68rem;text-align:left;cursor:pointer;min-height:54px}}
+  .fbar.open .filter-toggle{{display:none}}
+  .fbar.open .filter-sheet-head{{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.62rem}}
+  .filter-sheet-head h2{{font-size:.98rem;line-height:1.2}}
+  .filter-sheet-head p{{font-size:.7rem;color:var(--muted);line-height:1.35;margin-top:.12rem}}
   .filter-toggle span{{display:flex;flex-direction:column;min-width:0;line-height:1.15}}
   .filter-toggle b{{font-size:.82rem}}.filter-toggle small{{margin-top:.12rem;color:var(--muted);
     font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
@@ -271,7 +337,9 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
   .range input[type=range]::-webkit-slider-thumb{{width:24px;height:24px}}
   .range input[type=range]::-moz-range-thumb{{width:24px;height:24px}}
   .rdout{{font-size:.84rem;min-width:76px;text-align:right}}
-  .reset{{width:100%;min-height:42px;border-radius:10px}}.fhits{{align-self:center;justify-content:center;display:none}}
+  .freset,.fhits{{display:none}}
+  .filter-actions{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:.1rem}}
+  .reset{{width:100%;min-height:44px;border-radius:10px}}
   .sts{{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;margin:.75rem 0}}
   .st{{padding:.58rem .4rem;border-radius:8px}}.st .n{{font-size:1.18rem}}.st .l{{font-size:.66rem}}
   .section-grid{{grid-template-columns:1fr;gap:.65rem;margin-bottom:.75rem}}
@@ -283,6 +351,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
   .ov{{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}}
   .ov table{{min-width:760px}}.hm{{min-width:620px}}
   .debrief-table{{display:none}}.mobile-cards{{display:block}}
+  .show-more{{display:block}}
   .legend{{overflow-x:auto;white-space:nowrap;padding-bottom:.15rem}}
 }}
 
@@ -356,22 +425,43 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
     <div>
       <div class="eyebrow">GMAT debrief intelligence</div>
       <h1>PrepSignals</h1>
-      <p>Explore public GMAT debriefs by score, section balance, prep time, resources, and tactics.
-      Use the filters to find examples close to your target profile, then open the underlying debriefs behind each signal.</p>
+      <p>Pick a goal, then open real debriefs behind the signal. Filter by target score, resources, prep time, section balance, and tactics.</p>
     </div>
     <div class="hero-pills" aria-label="Dashboard strengths">
-      <span class="hero-pill">330 debriefs</span>
+      <span class="hero-pill">{n_deb} debriefs</span>
       <span class="hero-pill">Q / V / DI patterns</span>
-      <span class="hero-pill">Click-through evidence</span>
+      <span class="hero-pill">Source evidence</span>
     </div>
   </div>
 
+  <section class="path-section" aria-labelledby="pathTitle">
+    <div class="path-head">
+      <div>
+        <h2 id="pathTitle">Choose your path</h2>
+        <p>Jump straight into the debriefs and charts most useful for your next move.</p>
+      </div>
+    </div>
+    <div class="path-grid">
+      <button class="path-card" style="--pc:#38bdf8" type="button" onclick="handlePath('quant')"><b>Improve Quant</b><span>Section tactics and Q-score patterns</span></button>
+      <button class="path-card" style="--pc:#a78bfa" type="button" onclick="handlePath('verbal')"><b>Improve Verbal</b><span>CR, RC, pacing, and V-score signals</span></button>
+      <button class="path-card" style="--pc:#34d399" type="button" onclick="handlePath('di')"><b>Improve Data Insights</b><span>DI timing, DS, MSR, and table tactics</span></button>
+      <button class="path-card" style="--pc:#22d3ee" type="button" onclick="handlePath('700')"><b>Find 700+ debriefs</b><span>Filter to high-score stories</span></button>
+      <button class="path-card" style="--pc:#f59e0b" type="button" onclick="handlePath('resources')"><b>Compare resources</b><span>See what people used and how</span></button>
+      <button class="path-card" style="--pc:#34d399" type="button" onclick="handlePath('jumps')"><b>Big score jumps</b><span>Open gain buckets and examples</span></button>
+    </div>
+  </section>
+
   <!-- sticky filter toolbar -->
+  <div class="filter-backdrop" id="filterBackdrop" onclick="closeFilters(false)" aria-hidden="true"></div>
   <div class="fbar" id="filterBar">
     <button class="filter-toggle" id="filterToggle" type="button" onclick="toggleFilters()" aria-expanded="false">
       <span><b>Filters</b><small id="filterSummary">{sdef_min}-{sdef_max}</small></span>
       <strong id="filterCount"></strong><i aria-hidden="true"></i>
     </button>
+    <div class="filter-sheet-head">
+      <div><h2>Filters</h2><p>Adjust the target profile, then apply when you are ready.</p></div>
+      <button class="filter-close" type="button" onclick="closeFilters(false)" aria-label="Close filters">×</button>
+    </div>
   <div class="frow">
     <div class="fld fscore"><span>Score range</span>
       <div class="scorectl">
@@ -392,29 +482,44 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
     <div class="fld"><span>Self Study</span><select id="fSelf"><option value="">Any</option><option value="yes">Self study only</option><option value="no">Paid prep only</option></select></div>
     <div class="fld freset"><span>&nbsp;</span><button class="reset" onclick="resetAll()">Reset</button></div>
     <div class="fld fhits"><span>&nbsp;</span><span class="hits" id="hits"></span></div>
+    <div class="filter-actions">
+      <button class="apply-mobile" type="button" onclick="applyFilterSheet()">Apply</button>
+      <button class="reset" type="button" onclick="resetAll()">Reset</button>
+      <button class="close-mobile" type="button" onclick="closeFilters(false)">Close</button>
+    </div>
   </div></div>
 
   <div id="statsRow" class="sts"></div>
 
+  <section class="reco-section" id="recommendedSection" aria-labelledby="recommendedTitle">
+    <div class="reco-head">
+      <div>
+        <h2 id="recommendedTitle">Start with these debriefs</h2>
+        <p id="recommendedSub">High-signal stories from the current filter.</p>
+      </div>
+    </div>
+    <div class="reco-grid" id="recommendedCards"></div>
+  </section>
+
   <div class="section-grid" id="sectionCards"></div>
 
   <div class="gr">
-    <div class="cd"><h2>Total score distribution</h2><div class="sub">Shows how filtered posts are spread across official scores. Taller bars mean more examples at that score; click a bar to read the matching posts.</div><canvas id="c1"></canvas></div>
+    <div class="cd" id="card-score"><h2>Total score distribution</h2><div class="sub">Shows how filtered posts are spread across official scores. Taller bars mean more examples at that score; tap/click a bar to read matching posts.</div><canvas id="c1"></canvas></div>
     <div class="cd"><h2>Where each tier's weak spot is</h2><div class="sub">Compares median Q, V, and DI inside each score band. Read one band at a time: the shortest bar is usually the section that kept that tier from moving higher.</div><canvas id="c2"></canvas></div>
   </div>
 
   <div class="gr">
-    <div class="cd"><h2>How big a jump is realistic?</h2><div class="sub">Buckets reported start-to-official score gains. This shows the size of moves people actually described; click a bucket to inspect the debriefs behind it.</div><canvas id="cGain"></canvas></div>
-    <div class="cd"><h2>Resources used</h2><div class="sub">Counts named resources among achieved-score debriefs. This is popularity, not effectiveness; click a resource to see how people used it.</div><canvas id="cFreq"></canvas></div>
+    <div class="cd" id="card-gain"><h2>How big a jump is realistic?</h2><div class="sub">Buckets reported start-to-official score gains. Tap/click a bucket to inspect the debriefs behind it.</div><canvas id="cGain"></canvas></div>
+    <div class="cd" id="card-resources"><h2>Resources used</h2><div class="sub">Counts named resources among achieved-score debriefs. This is popularity, not effectiveness; tap/click a resource to see how people used it.</div><canvas id="cFreq"></canvas></div>
   </div>
 
   <div class="gr">
-    <div class="cd tall"><h2>Prep time vs score change</h2><div class="sub">Plots debriefs that report both prep length and score gain. X = weeks studied, Y = points gained, color = final score; the dashed line shows the overall trend.</div><canvas id="c3"></canvas></div>
-    <div class="cd"><h2>Does more study time help?</h2><div class="sub">Shows the median achieved score for each prep-time bucket. Use it to compare broad ranges, then hover for sample size or click to read examples.</div><canvas id="c5"></canvas></div>
+    <div class="cd tall"><h2>Prep time vs score change</h2><div class="sub">Plots debriefs that report both prep length and score gain. X = weeks studied, Y = points gained, color = final score; tap/click points to read examples.</div><canvas id="c3"></canvas></div>
+    <div class="cd"><h2>Does more study time help?</h2><div class="sub">Shows the median achieved score for each prep-time bucket. Tap/click a bucket to read examples and see sample size.</div><canvas id="c5"></canvas></div>
   </div>
 
   <div class="gr full">
-    <div class="cd"><h2>Which section tactics show up with higher scores?</h2><div class="sub">Each bar is the median total score for debriefs that used that section tactic. The dashed line is the filtered median; bars to the right are associated with stronger outcomes, not guaranteed causes.</div>
+    <div class="cd"><h2>Which section tactics show up with higher scores?</h2><div class="sub">Each bar is the median total score for debriefs that used that section tactic. Tap/click bars to open examples. The dashed line is the filtered median.</div>
       <div class="trio">
         <div><div class="seclbl" style="color:#38bdf8">Quant</div><canvas id="c4q"></canvas></div>
         <div><div class="seclbl" style="color:#a78bfa">Verbal</div><canvas id="c4v"></canvas></div>
@@ -424,7 +529,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{{o
   </div>
 
   <div class="gr full">
-    <div class="cd"><h2>What each score tier actually did</h2><div class="sub">Shows the share of debriefs in each band that used each tactic. Read down a column to see that tier's common playbook; darker cells mean the tactic appeared more often.</div>
+    <div class="cd"><h2>What each score tier actually did</h2><div class="sub">On mobile, this becomes stacked tactic cards for your selected score bands. Tap any tactic to open matching debriefs.</div>
       <div class="ov"><div id="heatmap"></div></div>
       <div class="legend"><span>0%</span><span class="sw" style="background:rgba(56,189,248,.08)"></span><span class="sw" style="background:rgba(56,189,248,.4)"></span><span class="sw" style="background:rgba(56,189,248,.75)"></span><span class="sw" style="background:rgba(56,189,248,1)"></span><span>most common</span></div>
     </div>
@@ -501,6 +606,41 @@ const D={js_data};
 const TT={tt_js};
 const DETAIL={details_js};
 if(typeof window.Chart==='undefined'&&typeof Chart!=='undefined')window.Chart=Chart;
+const MOBILE_MQ=window.matchMedia?window.matchMedia('(max-width: 760px)'):{{matches:false}};
+const isPhone=()=>MOBILE_MQ.matches;
+function cleanProps(props){{
+  const out={{}};
+  Object.entries(props||{{}}).forEach(([k,v])=>{{
+    if(v===undefined||v===null||v==='')return;
+    if(Array.isArray(v))v=v.slice(0,4).join('|');
+    if(typeof v==='object')v=JSON.stringify(v);
+    out[k]=String(v).slice(0,120);
+  }});
+  return out;
+}}
+function trackEvent(name,props){{
+  try{{if(typeof window.va==='function')window.va('event',{{name,data:cleanProps(props)}});}}catch(e){{}}
+}}
+function currentScoreRange(){{
+  if(typeof sLo==='undefined'||typeof sHi==='undefined')return '';
+  let lo=+sLo.value,hi=+sHi.value;if(lo>hi){{const t=lo;lo=hi;hi=t;}}
+  return lo+'-'+hi;
+}}
+function filterProps(extra){{
+  return Object.assign({{
+    score_range:currentScoreRange(),
+    source:document.getElementById('fSrc')?document.getElementById('fSrc').value:'',
+    resource:document.getElementById('fRes')?document.getElementById('fRes').value:'',
+    attempts:document.getElementById('fAtt')?document.getElementById('fAtt').value:'',
+    promo:document.getElementById('fSpon')?document.getElementById('fSpon').value:'',
+    self_study:document.getElementById('fSelf')?document.getElementById('fSelf').value:'',
+  }},extra||{{}});
+}}
+function focusScroll(id){{
+  const el=document.getElementById(id);if(!el)return;
+  el.scrollIntoView({{behavior:REDUCED_MOTION?'auto':'smooth',block:'start'}});
+  if(el.classList){{el.classList.add('focus-pulse');setTimeout(()=>el.classList.remove('focus-pulse'),900);}}
+}}
 
 /* ---- views ---- */
 const TESTS=[{{id:'gmat',name:'GMAT',on:true}},{{id:'gre',name:'GRE',soon:true}}];
@@ -511,6 +651,7 @@ function showView(v){{
   document.getElementById('view-about').style.display=v==='about'?'block':'none';
   document.getElementById('nav-gmat').classList.toggle('on',v==='gmat');
   document.getElementById('nav-about').classList.toggle('on',v==='about');
+  if(v==='about')trackEvent('about_open',{{section:'about'}});
   window.scrollTo(0,0);
 }}
 
@@ -541,10 +682,28 @@ Chart.defaults.plugins.tooltip.borderWidth=1;
 const filterBar=document.getElementById('filterBar'),
       filterToggle=document.getElementById('filterToggle'),
       filterSummary=document.getElementById('filterSummary'),
+      filterBackdrop=document.getElementById('filterBackdrop'),
       filterCount=document.getElementById('filterCount');
+function openFilters(){{
+  filterBar.classList.add('open');
+  filterBackdrop&&filterBackdrop.classList.add('on');
+  filterToggle.setAttribute('aria-expanded','true');
+  if(isPhone())document.body.classList.add('filter-open');
+  trackEvent('filter_open',filterProps());
+}}
+function closeFilters(){{
+  filterBar.classList.remove('open');
+  filterBackdrop&&filterBackdrop.classList.remove('on');
+  filterToggle.setAttribute('aria-expanded','false');
+  document.body.classList.remove('filter-open');
+}}
 function toggleFilters(){{
-  const open=filterBar.classList.toggle('open');
-  filterToggle.setAttribute('aria-expanded',open?'true':'false');
+  if(filterBar.classList.contains('open'))closeFilters(false);else openFilters();
+}}
+function applyFilterSheet(){{
+  applyAll(false);
+  trackEvent('filter_apply',filterProps({{matches:gf().length}}));
+  closeFilters(false);
 }}
 function updateFilterChrome(count){{
   let lo=+sLo.value,hi=+sHi.value;if(lo>hi){{const t=lo;lo=hi;hi=t;}}
@@ -602,6 +761,7 @@ const isDeb=()=>true;
 function med(a){{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:Math.round((s[m-1]+s[m])/2)}}
 function tc(t){{if(t==='Maybe Promo')return'tag-maybe-promo';if(t==='Self Study')return'tag-self-study';return'tag-other'}}
 function sc(s){{if(s==='Reddit')return'src-reddit';if(s==='GMAT Club')return'src-gmat-club';return'src-other'}}
+function hEsc(s){{return String(s||'').replace(/[&<>"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]))}}
 function tHTML(tags,sreason){{return(tags||[]).map(t=>{{let tip=TT[t]||t;if(t==='Maybe Promo'&&sreason)tip=tip+'\n— '+sreason;const ti=tip.replace(/"/g,'&quot;');return`<span class="tag ${{tc(t)}}" data-tiph="${{t}}" data-tip="${{ti}}">${{t}}</span>`}}).join('')}}
 const BANDS=[['650-689',650,689],['690-719',690,719],['720-749',720,749],['750-805',750,805]];
 
@@ -657,6 +817,7 @@ function glossLines(k){{const s=GLOSS[k];if(!s)return[];const w=s.split(' ');con
 
 /* ---- in-tab drill-down ---- */
 function openDrill(title,posts){{
+  trackEvent('chart_drill_open',filterProps({{drill:title,count:posts.length}}));
   document.getElementById('drlTitle').textContent=title;
   document.getElementById('drlMeta').textContent=posts.length+' post'+(posts.length===1?'':'s')+' · sorted by score';
   const tb=document.getElementById('drlBody');tb.innerHTML='';
@@ -665,9 +826,9 @@ function openDrill(title,posts){{
     const res=(x.resources||[]).slice(0,3).join(', ')||'—';
     const pw=x.prep_weeks?x.prep_weeks+'w':'—';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${{x.date}}</td><td><a href="#" onclick="openPost('${{x.id}}');return false">${{t}}</a></td>`+
+    tr.innerHTML=`<td>${{x.date}}</td><td><a href="#" onclick="openDebrief('${{x.id}}','drill');return false">${{hEsc(t)}}</a></td>`+
       `<td><b>${{x.total}}</b></td><td>${{x.q||'—'}}</td><td>${{x.v||'—'}}</td><td>${{x.di||'—'}}</td>`+
-      `<td>${{pw}}</td><td style="font-size:.72rem">${{res}}</td><td><span class="src ${{sc(x.source)}}">${{x.source}}</span></td>`+
+      `<td>${{pw}}</td><td style="font-size:.72rem">${{hEsc(res)}}</td><td><span class="src ${{sc(x.source)}}">${{hEsc(x.source)}}</span></td>`+
       `<td>${{tHTML(x.tags,x.sreason)}}</td>`;
     tb.appendChild(tr);
   }});
@@ -702,27 +863,79 @@ function rSt(d){{
     <div class="st"><div class="n">${{gains.length?'+'+f(med(gains)):'—'}}</div><div class="l">Median gain</div></div>`;
 }}
 
+const MOBILE_CARD_STEP=12;
+let mobileCardLimit=MOBILE_CARD_STEP,lastRows=[],nextDebriefContext='';
+function shortTitle(x,n){{const t=x.title||'Untitled debrief';return t.length>n?t.slice(0,n-1)+'…':t}}
+function debriefSignalScore(x){{
+  let s=0;
+  if(x.total)s+=Math.max(0,x.total-600)/5;
+  if(x.q&&x.v&&x.di)s+=20;
+  if(x.gain)s+=Math.min(32,x.gain/5);
+  if(x.prep_weeks)s+=8;
+  s+=Math.min(16,(x.resources||[]).length*4);
+  s+=Math.min(18,(x.strat||[]).length*2);
+  if(x.nreplies)s+=Math.min(10,x.nreplies/2);
+  if((x.tags||[]).includes('Self Study'))s+=3;
+  return s;
+}}
+function debriefCardHTML(x,context){{
+  const title=hEsc(shortTitle(x,context==='recommended'?74:64));
+  const r=hEsc((x.resources||[]).slice(0,3).join(', ')||'No named resource');
+  const pw=x.prep_weeks?x.prep_weeks+'w':'Prep not stated';
+  const gain=x.gain?' · +'+x.gain:'';
+  const score=x.total||'—';
+  return `<span class="dtitle">${{title}}</span>
+    <div class="mmeta"><b>${{score}}</b><span>Q${{x.q||'—'}} / V${{x.v||'—'}} / DI${{x.di||'—'}}</span><span>${{pw}}${{gain}}</span><span class="src ${{sc(x.source)}}">${{hEsc(x.source)}}</span></div>
+    <div class="mres">${{r}}</div><div style="margin-top:.35rem">${{tHTML(x.tags,x.sreason)}}</div>
+    <span class="action-cue">${{context==='recommended'?'Read debrief':'Open analysis'}}</span>`;
+}}
+function openDebrief(id,context){{
+  nextDebriefContext=context||'card';
+  openPost(id);
+}}
+function renderRecommended(pool){{
+  const root=document.getElementById('recommendedCards');if(!root)return;
+  const rows=pool.slice().sort((a,b)=>debriefSignalScore(b)-debriefSignalScore(a)||(b.total||0)-(a.total||0)).slice(0,5);
+  document.getElementById('recommendedSub').textContent=rows.length?`${{rows.length}} high-signal stories from ${{pool.length}} matching debriefs.`:'No matching debriefs yet.';
+  root.innerHTML=rows.map(x=>`<button type="button" class="debrief-card reco-card" onclick="openDebrief('${{x.id}}','recommended')" aria-label="Read debrief: ${{hEsc(shortTitle(x,96))}}">${{debriefCardHTML(x,'recommended')}}</button>`).join('');
+}}
+function showMoreDebriefs(){{
+  mobileCardLimit+=MOBILE_CARD_STEP;
+  rTb(lastRows);
+}}
+
 function rTb(d){{
+  lastRows=d.slice();
   const tb=document.getElementById('tb');tb.innerHTML='';
   const cards=document.getElementById('mobileCards'); if(cards)cards.innerHTML='';
-  d.forEach(x=>{{
+  const renderTable=!isPhone();
+  if(renderTable)d.forEach(x=>{{
     const r=(x.resources||[]).slice(0,3).join(', ')||'—';
     const t=x.title.length>48?x.title.slice(0,48)+'…':x.title;
     const pw=x.prep_weeks?x.prep_weeks+'w':'—';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${{x.date}}</td><td><a href="#" onclick="openPost('${{x.id}}');return false">${{t}}</a></td><td><b>${{x.total}}</b></td><td>${{x.q||'—'}}</td><td>${{x.v||'—'}}</td><td>${{x.di||'—'}}</td><td>${{pw}}</td><td style="font-size:.7rem">${{r}}</td><td>${{x.attempts||'—'}}</td><td><span class="src ${{sc(x.source)}}">${{x.source}}</span></td><td>${{tHTML(x.tags,x.sreason)}}</td>`;
+    tr.innerHTML=`<td>${{x.date}}</td><td><a href="#" onclick="openDebrief('${{x.id}}','table');return false">${{hEsc(t)}}</a></td><td><b>${{x.total}}</b></td><td>${{x.q||'—'}}</td><td>${{x.v||'—'}}</td><td>${{x.di||'—'}}</td><td>${{pw}}</td><td style="font-size:.7rem">${{hEsc(r)}}</td><td>${{x.attempts||'—'}}</td><td><span class="src ${{sc(x.source)}}">${{hEsc(x.source)}}</span></td><td>${{tHTML(x.tags,x.sreason)}}</td>`;
     tb.appendChild(tr);
-    if(cards){{
-      const card=document.createElement('article');
-      card.className='mcard';
-      const gain=x.gain?' · +'+x.gain:'';
-      card.innerHTML=`<a href="#" onclick="openPost('${{x.id}}');return false">${{t}}</a>
-        <div class="mmeta"><b>${{x.total}}</b><span>Q${{x.q||'—'}} / V${{x.v||'—'}} / DI${{x.di||'—'}}</span><span>${{pw}}${{gain}}</span><span class="src ${{sc(x.source)}}">${{x.source}}</span></div>
-        <div class="mres">${{r}}</div><div style="margin-top:.35rem">${{tHTML(x.tags,x.sreason)}}</div>`;
-      cards.appendChild(card);
-    }}
   }});
-  document.getElementById('rc').textContent=`Showing ${{d.length}} of ${{D.length}} debriefs`;
+  if(cards&&isPhone()){{
+    d.slice(0,mobileCardLimit).forEach(x=>{{
+      const card=document.createElement('button');
+      card.type='button';card.className='debrief-card mcard';
+      card.setAttribute('aria-label','Open analysis: '+shortTitle(x,96));
+      card.onclick=()=>openDebrief(x.id,'all_debriefs');
+      card.innerHTML=debriefCardHTML(x,'all');
+      cards.appendChild(card);
+    }});
+    if(d.length>mobileCardLimit){{
+      const more=document.createElement('button');
+      more.type='button';more.className='show-more';
+      more.textContent=`Show ${{Math.min(MOBILE_CARD_STEP,d.length-mobileCardLimit)}} more debriefs`;
+      more.onclick=showMoreDebriefs;
+      cards.appendChild(more);
+    }}
+  }}
+  const shown=isPhone()?Math.min(d.length,mobileCardLimit):d.length;
+  document.getElementById('rc').textContent=isPhone()?`Showing ${{shown}} of ${{d.length}} matching debriefs`:`Showing ${{d.length}} of ${{D.length}} debriefs`;
 }}
 
 const SEC={{
@@ -760,7 +973,7 @@ function renderSectionCards(pool){{
   root.innerHTML=Object.keys(SEC).map(key=>{{
     const cfg=SEC[key], rows=sectionRows(pool,key), vals=rows.map(d=>d[cfg.field]), gains=rows.filter(d=>d.gain).map(d=>d.gain);
     const tags=sectionTacticCounts(rows,cfg).slice(0,3).map(([t,n])=>`<span class="mini-tag">${{shortTactic(t)}} · ${{n}}</span>`).join('');
-    return `<button class="section-card" style="--sec:${{cfg.color}}" onclick="openSectionInsight('${{key}}')">
+    return `<button class="section-card" style="--sec:${{cfg.color}}" onclick="openSectionInsight('${{key}}','section_card')">
       <h2>Improve ${{cfg.name}}</h2>
       <p>${{cfg.copy}}</p>
       <div class="section-metrics">
@@ -806,7 +1019,7 @@ function rCh(d){{
   const bn={{}};d.forEach(x=>{{bn[x.total]=(bn[x.total]||0)+1}});
   const bk=Object.keys(bn).map(Number).sort((a,b)=>a-b);
   const pctLabels=bk.map(s=>{{const p=pctOf(s);return p?s+'\n('+p+'%)':String(s)}});
-  CH.c1=new Chart(document.getElementById('c1'),{{type:'bar',data:{{labels:pctLabels,datasets:[{{label:'Count',data:bk.map(k=>bn[k]),backgroundColor:'#38bdf8',borderRadius:5}}]}},options:{{plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{title:items=>{{const s=bk[items[0].dataIndex];const p=pctOf(s);return p?s+' ('+p+'th percentile)':String(s)}},label:c=>'Posts: '+c.raw}}}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}},x:{{title:{{display:true,text:'Total score (official percentile)'}},ticks:{{font:{{size:10}},maxRotation:45,minRotation:45}}}}}}}}}});
+  CH.c1=new Chart(document.getElementById('c1'),{{type:'bar',data:{{labels:pctLabels,datasets:[{{label:'Count',data:bk.map(k=>bn[k]),backgroundColor:'#38bdf8',borderRadius:5}}]}},options:{{plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{title:items=>{{const s=bk[items[0].dataIndex];const p=pctOf(s);return p?s+' ('+p+'th percentile)':String(s)}},label:c=>'Posts: '+c.raw}}}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}},x:{{title:{{display:!isPhone(),text:'Total score (official percentile)'}},ticks:{{font:{{size:isPhone()?9:10}},maxRotation:isPhone()?0:45,minRotation:isPhone()?0:45,autoSkip:true,maxTicksLimit:isPhone()?6:12}}}}}}}}}});
   addChartClick(CH.c1,(f,i)=>f.filter(x=>x.total===bk[i]),i=>{{const s=bk[i];const p=pctOf(s);return 'Score '+s+(p?' ('+p+'%)':'')}});
   const modeScore=topPair(bn);
   setFinding('find-c1',modeScore?`Most matching debriefs cluster at ${{modeScore[0]}} (${{modeScore[1]}} posts); median total is ${{med(d.map(x=>x.total))}}.`:'No matching scores in this filter.');
@@ -818,7 +1031,7 @@ function rCh(d){{
     {{label:'Quant',data:medBand('q'),backgroundColor:'#38bdf8'}},
     {{label:'Verbal',data:medBand('v'),backgroundColor:'#a78bfa'}},
     {{label:'Data Insights',data:medBand('di'),backgroundColor:'#34d399'}}]}},
-    options:{{plugins:{{legend:{{display:true,position:'top'}}}},scales:{{y:{{min:74,max:92,title:{{display:true,text:'Median section score'}}}},x:{{title:{{display:true,text:'Total-score band'}}}}}}}}}});
+    options:{{plugins:{{legend:{{display:true,position:'top',labels:{{boxWidth:isPhone()?10:12,font:{{size:isPhone()?10:12}}}}}}}},scales:{{y:{{min:74,max:92,title:{{display:!isPhone(),text:'Median section score'}}}},x:{{title:{{display:!isPhone(),text:'Total-score band'}},ticks:{{font:{{size:isPhone()?10:12}}}}}}}}}}}});
   addChartClick(CH.c2,(f,i)=>{{const b=BANDS[i];return (isDeb()?f:deb(f)).filter(x=>x.total>=b[1]&&x.total<=b[2])}},i=>BANDS[i][0]+' band');
   const bandNotes=BANDS.map((b,i)=>{{const vals={{q:medBand('q')[i],v:medBand('v')[i],di:medBand('di')[i]}};const entries=Object.entries(vals).filter(x=>x[1]);if(!entries.length)return null;entries.sort((a,b)=>a[1]-b[1]);return `${{b[0]}}: ${{sectionName(entries[0][0])}} (${{entries[0][1]}})`;}}).filter(Boolean);
   setFinding('find-c2',bandNotes.length?`Lowest median section by tier: ${{compactList(bandNotes,3)}}.`:'Not enough section-score splits in this filter.');
@@ -828,7 +1041,7 @@ function rCh(d){{
   const gainsD=ss.filter(x=>x.gain).map(x=>x.gain);
   const gcnt=GB.map(b=>gainsD.filter(g=>g>=b[1]&&g<=b[2]).length);
   CH.cGain=new Chart(document.getElementById('cGain'),{{type:'bar',data:{{labels:GB.map(b=>b[0]+' pts'),datasets:[{{data:gcnt,backgroundColor:'#34d399',borderRadius:5}}]}},
-    options:{{plugins:{{legend:{{display:false}},title:{{display:gainsD.length>0,text:`${{gainsD.length}} debriefs report a start→official jump`,color:'#94a3b8',font:{{size:11}}}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}},title:{{display:true,text:'# debriefs'}}}},x:{{title:{{display:true,text:'Points gained'}}}}}}}}}});
+    options:{{plugins:{{legend:{{display:false}},title:{{display:gainsD.length>0,text:`${{gainsD.length}} debriefs report a start→official jump`,color:'#94a3b8',font:{{size:11}}}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}},title:{{display:!isPhone(),text:'# debriefs'}}}},x:{{title:{{display:!isPhone(),text:'Points gained'}},ticks:{{font:{{size:isPhone()?10:12}}}}}}}}}}}});
   addChartClick(CH.cGain,(f,i)=>{{const b=GB[i];return (isDeb()?f:deb(f)).filter(x=>x.gain&&x.gain>=b[1]&&x.gain<=b[2])}},i=>GB[i][0]+' point gain');
   const gainTop=gcnt.length?gcnt.reduce((best,n,i)=>n>best.n?{{n,i}}:best,{{n:-1,i:0}}):null;
   setFinding('find-cGain',gainsD.length?`${{gainsD.length}} debriefs report a gain; the most common bucket is ${{GB[gainTop.i][0]}} points (${{gainTop.n}} posts), with median +${{med(gainsD)}}.`:'No matching debriefs report both start and official score.');
@@ -836,7 +1049,7 @@ function rCh(d){{
   // cFreq: resources popularity
   const rc={{}};ss.forEach(x=>(x.resources||[]).forEach(r=>rc[r]=(rc[r]||0)+1));
   const rfreq=Object.entries(rc).sort((a,b)=>b[1]-a[1]).slice(0,12);
-  CH.cFreq=new Chart(document.getElementById('cFreq'),{{type:'bar',data:{{labels:rfreq.map(r=>r[0]),datasets:[{{data:rfreq.map(r=>r[1]),backgroundColor:'#f59e0b',borderRadius:4}}]}},options:{{indexAxis:'y',plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{afterBody:items=>glossLines(rfreq[items[0].dataIndex][0])}}}}}},scales:{{x:{{beginAtZero:true,ticks:{{stepSize:1}},title:{{display:true,text:'# debriefs mentioning it'}}}}}}}}}});
+  CH.cFreq=new Chart(document.getElementById('cFreq'),{{type:'bar',data:{{labels:rfreq.map(r=>r[0]),datasets:[{{data:rfreq.map(r=>r[1]),backgroundColor:'#f59e0b',borderRadius:4}}]}},options:{{indexAxis:'y',plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{afterBody:items=>glossLines(rfreq[items[0].dataIndex][0])}}}}}},scales:{{x:{{beginAtZero:true,ticks:{{stepSize:1}},title:{{display:!isPhone(),text:'# debriefs mentioning it'}}}},y:{{ticks:{{font:{{size:isPhone()?10:12}}}}}}}}}}}});
   addChartClick(CH.cFreq,(f,i)=>{{const rn=rfreq[i][0];return (isDeb()?f:deb(f)).filter(x=>(x.resources||[]).includes(rn))}},i=>'Uses '+rfreq[i][0]);
   setFinding('find-cFreq',rfreq.length?`${{rfreq[0][0]}} is the most-mentioned resource in this filter (${{rfreq[0][1]}} debriefs).`:'No named resources in this filter.');
 
@@ -853,7 +1066,7 @@ function rCh(d){{
     {{label:'Trend',type:'line',data:trend,borderColor:'#f59e0b',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false}}]}},
     options:{{plugins:{{legend:{{display:false}},title:{{display:true,text:`${{pts.length}} debriefs report both prep time & a score jump`,color:'#94a3b8',font:{{size:11}}}},
       tooltip:{{callbacks:{{label:c=>{{const p=c.raw&&c.raw._p;return p?[p.title.slice(0,52),`${{p.x}}w prep, +${{p.y}} pts (${{p.start||'?'}}→${{p.total}})`]:`${{c.raw.x}}w, +${{c.raw.y}} pts`}}}}}}}},
-    scales:{{x:{{beginAtZero:true,title:{{display:true,text:'Weeks of prep'}}}},y:{{beginAtZero:true,title:{{display:true,text:'Points gained (start → official)'}}}}}}}}}});
+    scales:{{x:{{beginAtZero:true,title:{{display:!isPhone(),text:'Weeks of prep'}}}},y:{{beginAtZero:true,title:{{display:!isPhone(),text:'Points gained (start → official)'}}}}}}}}}});
   CH.c3.options.onClick=(evt,items)=>{{const it=(items||[]).find(i=>i.datasetIndex===0);if(!it)return;const p=CH.c3.data.datasets[0].data[it.index]._p;if(p)openDrill(`Prep ${{p.x}}w / +${{p.y}} pts`,[p]);}};
   CH.c3.options.onHover=(evt,items)=>{{if(evt.native&&evt.native.target)evt.native.target.style.cursor=(items||[]).some(i=>i.datasetIndex===0)?'pointer':'default'}};
   CH.c3.update();
@@ -868,7 +1081,7 @@ function rCh(d){{
   const tbS=TB.map(b=>ss.filter(x=>x.prep_weeks&&x.prep_weeks>=b[1]&&x.prep_weeks<=b[2]).map(x=>x.total));
   const tbMed=tbS.map(a=>a.length?med(a):null),tbN=tbS.map(a=>a.length);
   CH.c5=new Chart(document.getElementById('c5'),{{type:'bar',data:{{labels:TB.map(b=>b[0]+'w'),datasets:[{{data:tbMed,backgroundColor:'#a78bfa',borderRadius:5}}]}},
-    options:{{plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:c=>[`Median: ${{c.raw}}`,`n=${{tbN[c.dataIndex]}}`]}}}}}},scales:{{y:{{min:640,max:810,title:{{display:true,text:'Median achieved score'}}}},x:{{title:{{display:true,text:'Prep time'}}}}}}}}}});
+    options:{{plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:c=>[`Median: ${{c.raw}}`,`n=${{tbN[c.dataIndex]}}`]}}}}}},scales:{{y:{{min:640,max:810,title:{{display:!isPhone(),text:'Median achieved score'}}}},x:{{title:{{display:!isPhone(),text:'Prep time'}},ticks:{{font:{{size:isPhone()?10:12}}}}}}}}}}}});
   addChartClick(CH.c5,(f,i)=>{{const b=TB[i];return (isDeb()?f:deb(f)).filter(x=>x.prep_weeks&&x.prep_weeks>=b[1]&&x.prep_weeks<=b[2])}},i=>TB[i][0]+' weeks prep');
   const prepBest=tbMed.map((m,i)=>({{m,i,n:tbN[i]}})).filter(x=>x.m!=null).sort((a,b)=>b.m-a.m)[0];
   setFinding('find-c5',prepBest?`${{TB[prepBest.i][0]}} weeks has the highest median score (${{prepBest.m}}, n=${{prepBest.n}}), among posts that stated prep time.`:'No matching debriefs state prep duration.');
@@ -877,6 +1090,8 @@ function rCh(d){{
 }}
 
 function renderHeatmap(ss){{
+  const legend=document.getElementById('heatmap')?.closest('.cd')?.querySelector('.legend');
+  if(legend)legend.style.display=isPhone()?'none':'flex';
   const bandSS=BANDS.map(b=>ss.filter(x=>x.total>=b[1]&&x.total<=b[2]));
   const bandN=bandSS.map(a=>a.length);
   const cnt={{}};ss.forEach(x=>(x.strat||[]).forEach(k=>cnt[k]=(cnt[k]||0)+1));
@@ -887,6 +1102,13 @@ function renderHeatmap(ss){{
   let maxPct=0;const grid={{}};
   items.forEach(it=>{{grid[it]=BANDS.map((b,i)=>{{const tot=bandN[i];if(!tot)return null;const u=bandSS[i].filter(x=>(x.strat||[]).includes(it)).length;const p=Math.round(100*u/tot);if(p>maxPct)maxPct=p;return {{p,u,tot}}}})}});
   if(maxPct===0)maxPct=1;
+  let best=null;
+  items.forEach(it=>grid[it].forEach((cell,bi)=>{{if(cell&&(!best||cell.p>best.p))best={{it,cell,band:BANDS[bi][0]}};}}));
+  if(isPhone()){{
+    renderMobileHeatmap(items,grid,bandN,SECTIONS,sectionOf,shortLabel);
+    setFinding('find-heatmap',best?`${{shortLabel(best.it)}} appears in ${{best.cell.p}}% of ${{best.band}} debriefs (${{best.cell.u}} of ${{best.cell.tot}}).`:'Not enough repeated tactics in this filter.');
+    return;
+  }}
   let h='<table class="hm"><thead><tr><th style="text-align:left">Tactic ↓ &nbsp; Band →</th>';
   BANDS.forEach((b,i)=>h+=`<th>${{b[0]}}<br><span style="font-weight:400">n=${{bandN[i]}}</span></th>`);
   h+='</tr></thead><tbody>';
@@ -910,9 +1132,32 @@ function renderHeatmap(ss){{
   }});
   h+='</tbody></table>';
   document.getElementById('heatmap').innerHTML=h;
-  let best=null;
-  items.forEach(it=>grid[it].forEach((cell,bi)=>{{if(cell&&(!best||cell.p>best.p))best={{it,cell,band:BANDS[bi][0]}};}}));
   setFinding('find-heatmap',best?`${{shortLabel(best.it)}} appears in ${{best.cell.p}}% of ${{best.band}} debriefs (${{best.cell.u}} of ${{best.cell.tot}}).`:'Not enough repeated tactics in this filter.');
+}}
+function renderMobileHeatmap(items,grid,bandN,SECTIONS,sectionOf,shortLabel){{
+  const root=document.getElementById('heatmap');
+  let lo=+sLo.value,hi=+sHi.value;if(lo>hi){{const t=lo;lo=hi;hi=t;}}
+  const active=BANDS.map((b,i)=>({{b,i}})).filter(x=>bandN[x.i]&&x.b[2]>=lo&&x.b[1]<=hi);
+  if(!items.length||!active.length){{
+    root.innerHTML='<div class="hmobile"><p class="hmobile-note">Not enough repeated tactics in this filter yet. Try widening the score range.</p></div>';
+    return;
+  }}
+  let h='<div class="hmobile"><p class="hmobile-note">Common tactics among debriefs in your selected score range. Tap a row to open examples.</p>';
+  active.forEach(({{b,i}})=>{{
+    const rows=items.map(it=>({{it,cell:grid[it][i],sec:sectionOf(it)}})).filter(r=>r.cell&&r.cell.u>0)
+      .sort((a,b)=>b.cell.p-a.cell.p||b.cell.u-a.cell.u).slice(0,6);
+    h+=`<section class="hm-band"><h3>${{b[0]}} <span>n=${{bandN[i]}}</span></h3><div class="hmob-list">`;
+    if(!rows.length)h+='<div class="hmobile-note">No repeated tactics in this band.</div>';
+    rows.forEach(r=>{{
+      const safe=r.it.replace(/'/g,"\\'");
+      h+=`<button type="button" class="hmob-row" onclick="hmClick('${{safe}}',${{b[1]}},${{b[2]}})" aria-label="Open examples for ${{hEsc(shortLabel(r.it))}} in ${{b[0]}}">
+        <span class="hmob-dot" style="--hc:${{r.sec.color}}"></span><span class="hmob-label">${{hEsc(shortLabel(r.it))}}</span>
+        <span class="hmob-pct">${{r.cell.p}}% <small>(${{r.cell.u}}/${{r.cell.tot}})</small></span></button>`;
+    }});
+    h+='</div></section>';
+  }});
+  h+='</div>';
+  root.innerHTML=h;
 }}
 function hmClick(strat,lo,hi){{
   const ss=deb(gf());const posts=ss.filter(x=>x.total>=lo&&x.total<=hi&&(x.strat||[]).includes(strat));
@@ -926,8 +1171,9 @@ function closeSectionInsight(){{
   sp.classList.remove('on');sp.innerHTML='';destroySectionCharts();
   if(!document.getElementById('drill').classList.contains('on')&&!document.getElementById('postpage').classList.contains('on'))document.body.style.overflow='';
 }}
-function openSectionInsight(key){{
+function openSectionInsight(key,origin){{
   const cfg=SEC[key], pool=gf(), rows=sectionRows(pool,key);
+  if((origin||'section_card')==='section_card')trackEvent('section_card_click',filterProps({{section:cfg.name,count:rows.length}}));
   const gains=rows.filter(d=>d.gain).map(d=>d.gain);
   const stats=[
     ['Debriefs',rows.length],
@@ -1048,7 +1294,7 @@ function renderSecRows(key,rows){{
   rows.slice().sort((a,b)=>(b[cfg.field]||0)-(a[cfg.field]||0)||(b.total||0)-(a.total||0)).forEach(x=>{{
     const r=(x.resources||[]).slice(0,3).join(', ')||'—', t=x.title.length>54?x.title.slice(0,54)+'…':x.title;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${{x.date}}</td><td><a href="#" onclick="openPost('${{x.id}}');return false">${{t}}</a></td><td><b>${{x.total}}</b></td><td>${{x.q||'—'}}</td><td>${{x.v||'—'}}</td><td>${{x.di||'—'}}</td><td>${{x.gain?'+'+x.gain:'—'}}</td><td style="font-size:.7rem">${{r}}</td><td>${{tHTML(x.tags,x.sreason)}}</td>`;
+    tr.innerHTML=`<td>${{x.date}}</td><td><a href="#" onclick="openDebrief('${{x.id}}','section_rows');return false">${{hEsc(t)}}</a></td><td><b>${{x.total}}</b></td><td>${{x.q||'—'}}</td><td>${{x.v||'—'}}</td><td>${{x.di||'—'}}</td><td>${{x.gain?'+'+x.gain:'—'}}</td><td style="font-size:.7rem">${{hEsc(r)}}</td><td>${{tHTML(x.tags,x.sreason)}}</td>`;
     tb.appendChild(tr);
   }});
 }}
@@ -1078,12 +1324,35 @@ function secHmClick(key,strat,lo,hi){{
   if(rows.length)openDrill(shortTactic(strat)+' · '+cfg.short+' '+lo+'-'+hi,rows);
 }}
 
+function setScoreRange(lo,hi){{
+  sLo.value=Math.max(+sLo.min,lo);
+  sHi.value=Math.min(+sHi.max,hi);
+  syncSlider();
+  applyAll();
+}}
+function handlePath(path){{
+  trackEvent('path_click',filterProps({{path:path}}));
+  closeFilters(false);
+  if(path==='quant'){{openSectionInsight('q','path');return;}}
+  if(path==='verbal'){{openSectionInsight('v','path');return;}}
+  if(path==='di'){{openSectionInsight('di','path');return;}}
+  if(path==='700'){{
+    setScoreRange(705,805);
+    requestAnimationFrame(()=>focusScroll('recommendedSection'));
+    return;
+  }}
+  if(path==='resources'){{focusScroll('card-resources');return;}}
+  if(path==='jumps'){{focusScroll('card-gain');return;}}
+}}
+
 function applyAll(){{
+  mobileCardLimit=MOBILE_CARD_STEP;
   const f=gf();
   const matchText=f.length+' match'+(f.length===1?'':'es');
   document.getElementById('hits').textContent=matchText;
   updateFilterChrome(f.length);
   try{{rTb(f)}}catch(e){{console.error('table',e)}}
+  try{{renderRecommended(f)}}catch(e){{console.error('recommended debriefs',e)}}
   try{{rSt(f)}}catch(e){{console.error('stats',e)}}
   try{{renderSectionCards(f)}}catch(e){{console.error('section cards',e)}}
   try{{rCh(f)}}catch(e){{console.error('charts',e)}}
@@ -1093,6 +1362,7 @@ function resetAll(){{
   document.getElementById('fDF').value='{min_date}';document.getElementById('fDT').value='{max_date}';
   ['fSrc','fRes','fAtt','fSpon','fSelf'].forEach(id=>document.getElementById(id).value='');
   applyAll();
+  trackEvent('filter_reset',filterProps({{matches:gf().length}}));
 }}
 let sC=-1,sA=true;
 function srt(c){{
@@ -1460,9 +1730,28 @@ function renderPostCharts(det, row, attempt=0){
   renderSectionChart(row, true);
 }
 
+function trackOriginalOpen(id){
+  const row = D.find(d => d.id === id);
+  if(!row) return;
+  trackEvent('original_open', filterProps({
+    post_id:id,
+    source:row.source,
+    score:row.total,
+    resource:(row.resources||[])[0] || ''
+  }));
+}
 function openPost(id){
   const row = D.find(d => d.id === id);
   if(!row) return;
+  const openContext = nextDebriefContext || 'direct';
+  nextDebriefContext = '';
+  trackEvent('debrief_open', filterProps({
+    post_id:id,
+    source:row.source,
+    score:row.total,
+    resource:(row.resources||[])[0] || '',
+    context:openContext
+  }));
   activePostId = id;
   const wasOn = document.getElementById('postpage').classList.contains('on');
   const det = DETAIL[id] || {};
@@ -1507,7 +1796,7 @@ function openPost(id){
       <button class="dback" onclick="closeP()">&larr; Back</button>
       <div class="dhd-t"><span class="src ${srcClass}">${esc(row.source)}</span>
         ${tHTML(row.tags,row.sreason)}<h2>${esc(row.title)}</h2></div>
-      <a class="dorig" href="${row.permalink}" target="_blank" rel="noopener">Open original &#8599;</a>
+      <a class="dorig" href="${row.permalink}" target="_blank" rel="noopener" onclick="trackOriginalOpen('${row.id}')">Open original &#8599;</a>
     </div>
     <div class="dbody">
       <p class="dsummary">${esc(row.source)} debrief — ${bits.join(' · ')}.${det.overview?` <span style="color:var(--muted)">${esc(det.overview)}</span>`:''}</p>
