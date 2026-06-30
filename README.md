@@ -1,74 +1,51 @@
-# PrepSignals — GMAT guided debrief dashboard v.17
+# PrepSignals — GMAT action-plan dashboard v.18.1
 
-Ship-ready static PrepSignals dashboard over achieved-score GMAT debrief links.
-Open `dashboard_v17.html` in a browser after rebuilding; all data and Chart.js
-are embedded in the generated HTML.
+v.18.1 keeps the answer-first score-band entry from v.18, then changes what comes
+next: visitors get a distilled plan before they are asked to read individual
+debriefs.
 
-## What's new in v.17
+## What changed vs v.18
 
-- Adds a mobile-first "Choose your path" launcher for Quant, Verbal, DI,
-  high-score debriefs, resources, and score jumps.
-- Moves recommended high-signal debrief cards near the top of the dashboard.
-- Makes mobile debrief cards fully tappable and limits initial mobile list
-  rendering behind a "Show more" control.
-- Replaces the expanded mobile filter block with a bottom-sheet style panel.
-- Replaces the wide tactic heatmap on mobile with stacked tactic cards by score
-  band.
-- Adds guarded Vercel Web Analytics custom events without changing the static,
-  privacy-safe no-backend model.
+- Adds **Your plan for this score range**: section focus, practice loop, resource
+  stack, and proof examples.
+- Restores curated analytical depth without Chart.js: score distribution, section
+  split, resource frequency, prep/gain context, and tactic heatmap.
+- Moves real stories into an **Evidence behind the plan** section so reading
+  debriefs is optional proof instead of the primary task.
+- Adds clickable proof cohorts from action cards, resource insights, and heatmap
+  cells.
+- Fixes compressed chart/card presentation with stable chart heights, balanced
+  insight panels, and a taller score-path chart inside debrief detail pages.
 
 ## Rebuild
 
 From this folder:
 
 ```bash
-python3 build_v17.py
+python3 build_v18_1.py
 ```
 
-The builder writes:
+Writes `dashboard_v18_1.html`. The page is static and self-contained; it reads the
+local `debriefs.json` and `post_details.json` at build time.
 
-- `dashboard_v17.html`
+## Deep Links
 
-## Analytics
+- `?band=655`, `?band=705`, or `?band=755` opens a selected score range.
+- `?d=<post_id>` opens a specific debrief detail page.
 
-This is a static Vercel dashboard, not a Next.js app. Web Analytics is enabled
-with Vercel's static script in the generated HTML:
+## Analytics Events
 
-```html
-<script>
-  window.va = window.va || function () {
-    (window.vaq = window.vaq || []).push(arguments);
-  };
-</script>
-<script defer src="/_vercel/insights/script.js"></script>
-```
+The page keeps v.18 events: `band_select`, `debrief_open`, `origin_click`, and
+`about_open`.
 
-You do not need `npm i @vercel/analytics` unless the project is later converted
-to a Next.js/React app.
+v.18.1 adds:
 
-Speed Insights is wired the same way for this static page:
+- `action_click`
+- `insight_open`
+- `cohort_open`
 
-```html
-<script>
-  window.si = window.si || function () {
-    (window.siq = window.siq || []).push(arguments);
-  };
-</script>
-<script defer src="/_vercel/speed-insights/script.js"></script>
-```
+## Data Notes
 
-You do not need `npm i @vercel/speed-insights` unless the project is later
-converted to a Next.js/React app. If Vercel's Speed Insights dashboard later
-shows a project-specific static HTML script path, use that path in place of
-`/_vercel/speed-insights/script.js`.
-
-## Files
-
-| File | Role |
-|------|------|
-| `dashboard_v17.html` | Generated static dashboard. |
-| `build_v17.py` | Builds the dashboard from the embedded data files. |
-| `chart.umd.min.js` | Vendored Chart.js 4.4.7 browser bundle. |
-| `debriefs.json` | Per-post source rows with strategy items. |
-| `post_details.json` | Detail-page model: timeline, Q/V/DI notes, tactic chips. |
-| `vercel.json` | Routes `/` to the v.16 dashboard. |
+The underlying data pipeline is unchanged: same 330 debriefs, same
+`debriefs.json`, same `post_details.json`. Insight cards always expose sample
+sizes and use directional language rather than causal claims.
