@@ -95,16 +95,25 @@ section.block{padding:34px 0}
 .panel h3{font-size:17px;font-weight:800;margin-bottom:3px}
 .panel h3 .hint{font-size:13px;font-weight:600;color:var(--ink-3);margin-left:8px}
 .psub{font-size:13.5px;color:var(--ink-2);margin-bottom:18px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
-.grid2>.panel{min-height:330px;height:100%;display:flex;flex-direction:column}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;grid-auto-rows:1fr}
+.grid2>.panel{min-height:320px;height:100%;align-self:stretch;display:flex;flex-direction:column}
 .grid2>.panel .growfill{flex:1}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
 .blockh3{font-size:18px;font-weight:800;margin-bottom:3px}
 .blockh3 .hint{font-size:13px;font-weight:600;color:var(--ink-3);margin-left:8px}
 
 /* ---- action plan ---- */
-.actiongrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
-.actioncard{min-height:258px;text-align:left;background:var(--surface);border:1px solid var(--border);
+.focusbar{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);margin:18px 0 0}
+.focusbar .flabel{font-size:14px;font-weight:800;color:var(--ink)}
+.focusbar .fsub{font-size:12.5px;font-weight:650;color:var(--ink-2);margin-top:1px}
+.focusopts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.focusopts button{font-size:13px;font-weight:800;color:var(--ink-2);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:11px;padding:8px 11px;transition:.16s var(--ease)}
+.focusopts button:hover{border-color:var(--primary);color:var(--primary-d)}
+.focusopts button.on{background:var(--primary-l);border-color:var(--primary);color:var(--primary-d)}
+.actiongrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
+.actioncard{min-height:232px;text-align:left;background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;
   position:relative;overflow:hidden;transition:.2s var(--ease)}
 .actioncard::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--ac,var(--primary))}
@@ -124,7 +133,7 @@ section.block{padding:34px 0}
 /* ---- insight panels ---- */
 .insightgrid{display:grid;grid-template-columns:1.18fr .82fr;gap:16px;align-items:stretch}
 .insightstack{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.insightcard{min-height:236px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+.insightcard{min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .insightcard h3{font-size:17px;font-weight:800;margin-bottom:4px}
 .sample{font-size:12.5px;font-weight:700;color:var(--ink-3);margin-bottom:14px}
@@ -192,7 +201,7 @@ section.block{padding:34px 0}
 .sec-G{background:var(--primary-l);color:var(--primary-d)} .fill-G{background:var(--primary)}
 
 /* ---- score distribution ---- */
-.dist{height:310px;min-height:310px;width:100%;position:relative;margin-top:6px}
+.dist{height:370px;min-height:370px;width:100%;position:relative;margin-top:6px}
 .dist svg{display:block;width:100%;height:100%;overflow:visible}
 .dist .dbase{stroke:var(--border-2);stroke-width:1}
 .dist .dbar{transform-box:fill-box;transform-origin:center bottom;transform:scaleY(0);transition:transform .9s var(--ease)}
@@ -303,7 +312,7 @@ select.pick:focus{border-color:var(--primary)}
 .reschip{font-size:13.5px;font-weight:600;color:var(--ink);background:var(--surface-2);
   border:1px solid var(--border);border-radius:11px;padding:8px 13px;display:inline-flex;align-items:center;gap:8px}
 .reschip .d{width:7px;height:7px;border-radius:50%;background:var(--primary)}
-.spark{width:100%;height:230px;min-height:230px}
+.spark{width:100%;height:320px;min-height:320px}
 .timelinecard{padding-bottom:18px}
 .timelinegrid{stroke:var(--border);stroke-width:1}
 .timelinearea{fill:rgba(91,91,214,.08)}
@@ -335,15 +344,18 @@ footer a{color:var(--ink-2);font-weight:600}
   .band{padding:16px 17px}
   .band .bblurb{min-height:0}
   .band .barrow{opacity:1;transform:none}
+  .focusbar{align-items:flex-start;flex-direction:column;padding:13px 14px;gap:10px}
+  .focusopts{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:7px}
+  .focusopts button{padding:9px 8px}
   .actiongrid{grid-template-columns:1fr;gap:12px}
   .actioncard{min-height:0}
   .statrow{grid-template-columns:1fr 1fr;gap:10px}
   .grid2{grid-template-columns:1fr}
-  .grid2>.panel{min-height:0}
+  .grid2>.panel{min-height:0;height:auto}
   .grid3,.insightgrid,.insightstack{grid-template-columns:1fr}
   .playbook{grid-template-columns:1fr;gap:12px}
   .cards,#browseList{grid-template-columns:1fr}
-  .dist{height:260px;min-height:260px}
+  .dist{height:310px;min-height:310px}
   .heatmap{grid-template-columns:minmax(104px,1.1fr) repeat(3,1fr);gap:5px}
   .hmhead,.hmcell,.hmlabel{min-height:38px}
   .hmhead{font-size:10px}
@@ -352,7 +364,7 @@ footer a{color:var(--ink-2);font-weight:600}
   section.block{padding:26px 0}
   .panel{padding:18px}
   .dhero .big{font-size:40px}
-  .spark{height:190px;min-height:190px}
+  .spark{height:250px;min-height:250px}
 }
 @media(prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
@@ -372,7 +384,7 @@ footer a{color:var(--ink-2);font-weight:600}
   <div class="wrap">
     <section class="hero">
       <span class="eyebrow"><span class="pulse"></span>330 real GMAT debriefs</span>
-      <h1>What score are you aiming for?</h1>
+      <h1>What GMAT score are you aiming for?</h1>
       <p class="lede">Get a practical plan from people who <b>actually hit it</b> — what to focus on, what to practice, and which stories prove the pattern.</p>
       <div class="bands" id="bands"></div>
     </section>
@@ -387,6 +399,7 @@ footer a{color:var(--ink-2);font-weight:600}
         </div>
       </div>
       <div class="statrow" id="statrow"></div>
+      <div class="focusbar" id="focusPicker"></div>
       <div class="actiongrid" id="actionPlan"></div>
     </section>
 
@@ -468,7 +481,8 @@ footer a{color:var(--ink-2);font-weight:600}
   <h3>Privacy</h3>
   <p>No accounts, no tracking cookies, no backend. The page is static. We use Vercel's privacy-friendly aggregate analytics to see which ranges and stories are useful — nothing that identifies you.</p>
   <h3>Feedback</h3>
-  <p>Spot something off, or want your post removed? The original posts are public summaries, but we honor removal requests — reach out and we'll take it down.</p>
+  <p>If you want to see more features, notice something wrong, or have feedback, please email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
+  <p>If you are the author of a post represented in this project and want it removed or corrected, contact <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
   <p style="margin-top:18px;color:var(--ink-3)">Data spans 2023-11-13 to 2026-06-24.</p>
 </div></section>
 
@@ -506,7 +520,7 @@ const RM=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)'
 const BANDC={b1:{c:'var(--blue)',d:'var(--blue)',l:'var(--blue-l)'},
             b2:{c:'var(--primary)',d:'var(--primary-d)',l:'var(--primary-l)'},
             b3:{c:'var(--violet)',d:'var(--violet)',l:'var(--violet-l)'}};
-let state={band:'b2'};
+let state={band:'b2',focus:'auto'};
 
 function track(name,props){try{if(typeof window.va==='function')window.va('event',{name,data:props||{}});}catch(e){}}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -537,6 +551,7 @@ function sectionMedians(rows){
 }
 function sectionLabel(k){return k==='q'?'Quant':k==='v'?'Verbal':'Data Insights';}
 function sectionShort(k){return k==='q'?'Q':k==='v'?'V':'DI';}
+function sectionCode(k){return k==='q'?'Q':k==='v'?'V':'DI';}
 function weakestSection(rows){
   const m=sectionMedians(rows),pairs=Object.entries(m).filter(([,v])=>v!=null);
   if(!pairs.length)return null;
@@ -552,6 +567,11 @@ function rowsForStrat(rows,sec,label){
   return rows.filter(d=>(d.strat||[]).includes(prefix+': '+label));
 }
 function bestExamples(rows,n){return rows.slice().sort((a,b)=>richScore(b)-richScore(a)||(b.total||0)-(a.total||0)).slice(0,n||6);}
+function activeFocusKey(rows){
+  if(['q','v','di'].includes(state.focus))return state.focus;
+  const weak=weakestSection(rows);
+  return weak&&weak.key?weak.key:'di';
+}
 
 /* strategy item "DI: DI targeted practice" -> {sec:'DI', label:'DI targeted practice'} */
 function parseStrat(s){const i=s.indexOf(':');if(i<0)return{sec:'G',label:s};
@@ -611,21 +631,40 @@ function renderResults(){
   document.getElementById('statrow').innerHTML=stats.map(s=>
     `<div class="stat ${s.cls}"><div class="v">${s.v==null?'—':s.v}</div><div class="l">${s.l}</div></div>`).join('');
 
+  renderFocusPicker(rows,b);
   renderActionPlan(rows,b);
   renderRecoCards(rows,b);
   observeGrow();
 }
+function renderFocusPicker(rows,b){
+  const weak=weakestSection(rows),auto=weak?`Auto: ${weak.name}`:'Auto';
+  const opts=[['auto',auto],['q','Quant'],['v','Verbal'],['di','Data Insights']];
+  document.getElementById('focusPicker').innerHTML=`
+    <div><div class="flabel">What do you want to improve?</div>
+      <div class="fsub">Choose a section and the plan/examples below will pivot to it.</div></div>
+    <div class="focusopts">${opts.map(([k,l])=>`<button type="button" class="${state.focus===k?'on':''}" onclick="pickFocus('${k}')">${l}</button>`).join('')}</div>`;
+}
+function pickFocus(focus){
+  state.focus=focus;
+  const b=bandOf(state.band),rows=debsIn(b);
+  renderFocusPicker(rows,b);
+  renderActionPlan(rows,b);
+  track('focus_select',{focus,band:b.label});
+}
 function renderActionPlan(rows,b){
-  const weak=weakestSection(rows),secKey=weak?weak.key:null,secCode=secKey?(secKey==='q'?'Q':secKey==='v'?'V':'DI'):null;
-  const secTop=secCode?topStrats(rows,secCode,1)[0]:null;
+  const weak=weakestSection(rows),secKey=activeFocusKey(rows),secCode=sectionCode(secKey);
+  const secMed=sectionMedians(rows)[secKey],secTop=topStrats(rows,secCode,1)[0];
+  const focusManual=state.focus!=='auto';
   const genTop=topStrats(rows,'G',3);
   const resTop=topResources(rows,3);
   const proof=bestExamples(rows,6);
   const prep=rows.map(d=>d.prep_weeks).filter(x=>x!=null),gains=rows.map(d=>d.gain).filter(x=>x!=null);
   const cards=[
     {k:'Section focus',c:'var(--blue)',l:'var(--blue-l)',
-      h:weak?`Start with ${weak.name}`:'Start section by section',
-      p:weak?`${weak.name} is the lowest median split in this band (${sectionShort(secKey)}${weak.score}). Treat that as the first diagnostic checkpoint, not a verdict.`:'Not enough full section splits here, so start by separating Quant, Verbal, and DI practice.',
+      h:focusManual?`Improve ${sectionLabel(secKey)}`:(weak?`Start with ${weak.name}`:'Start section by section'),
+      p:focusManual
+        ?`${sectionLabel(secKey)} is your selected focus. In this band, the typical ${sectionShort(secKey)} score is ${secMed!=null?Math.round(secMed):'not fully reported'}, so use the examples to find section-specific moves.`
+        :(weak?`${weak.name} is the lowest median split in this band (${sectionShort(secKey)}${weak.score}). Treat that as the first diagnostic checkpoint, not a verdict.`:'Not enough full section splits here, so start by separating Quant, Verbal, and DI practice.'),
       m:secTop?`<b>${pct(secTop[1],rows.length)}%</b> mention ${esc(secTop[0])}`:`<b>${rows.length}</b> examples in range`,
       a:'See section examples',kind:'section'},
     {k:'Practice loop',c:'var(--primary)',l:'var(--primary-l)',
@@ -660,7 +699,7 @@ function handleAction(kind){
   track('action_click',{kind,band:b.label});
   if(kind==='proof'){jumpEvidence();return;}
   if(kind==='section'){
-    const weak=weakestSection(rows),key=weak&&weak.key?weak.key:'q';
+    const key=activeFocusKey(rows);
     const pool=rowsForSection(rows,key);
     openCohort(`${sectionLabel(key)} examples`,`${pool.length} ${b.label} debriefs with ${sectionLabel(key)} scores, tactics, or notes.`,bestExamples(pool,12),{kind:'section',band:b.label,section:sectionLabel(key),sample:pool.length});
     return;
@@ -735,13 +774,15 @@ function renderPatterns(){
   const pts=[];for(let s=655;s<=805;s+=10)pts.push(s);
   const cnt={};DEB.forEach(d=>{if(d.total!=null)cnt[d.total]=(cnt[d.total]||0)+1;});
   const max=Math.max(...pts.map(s=>cnt[s]||0),1);
-  const W=940,H=270,padX=28,padT=28,padB=42,base=H-padB,plotH=H-padT-padB,step=(W-padX*2)/pts.length,bw=Math.min(38,step*.72);
+  const compact=window.innerWidth<520;
+  const W=compact?340:940,H=compact?300:340,padX=compact?16:28,padT=compact?30:34,padB=compact?40:46;
+  const base=H-padB,plotH=H-padT-padB,step=(W-padX*2)/pts.length,bw=Math.min(compact?17:38,step*.72);
   const bars=pts.map((s,i)=>{
     const n=cnt[s]||0,inb=s>=b.lo&&s<=b.hi,h=n?Math.max(6,Math.round(n/max*plotH)):0;
     const x=padX+i*step+(step-bw)/2,y=base-h,show=(s%20===5)||s===805;
     return `<rect class="dbar ${inb?'inband':'all'}" x="${x.toFixed(1)}" y="${y}" width="${bw.toFixed(1)}" height="${h}" rx="7">
       <title>${s}: ${n} debriefs</title></rect>
-      ${n>=10?`<text class="dcount" x="${(x+bw/2).toFixed(1)}" y="${Math.max(15,y-8)}" text-anchor="middle">${n}</text>`:''}
+      ${n>=(compact?20:10)?`<text class="dcount" x="${(x+bw/2).toFixed(1)}" y="${Math.max(15,y-8)}" text-anchor="middle">${n}</text>`:''}
       ${show?`<text class="dlabel ${inb?'inband':''}" x="${(x+bw/2).toFixed(1)}" y="${H-14}" text-anchor="middle">${s}</text>`:''}`;
   }).join('');
   document.getElementById('dist').innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Score distribution histogram">
@@ -768,7 +809,7 @@ function renderPatterns(){
     :`Not enough complete section splits to name a bottleneck confidently.`;
 
   /* resources */
-  const top=topResources(rows,6),mx=top.length?top[0][1]:1;
+  const top=topResources(rows,4),mx=top.length?top[0][1]:1;
   document.getElementById('resSub2').innerHTML=`Most-named resources among <b>${rows.length}</b> ${b.label} scorers. Popularity only, not proof of effectiveness.`;
   document.getElementById('resBars').innerHTML=top.map(([r,n])=>{const pct=Math.round(100*n/rows.length);
     return `<div class="barrow"><div class="blabel"><span class="bname"><span class="txt">${esc(r)}</span></span><span class="bpct">${pct}%</span></div>
@@ -794,7 +835,7 @@ function renderPatterns(){
     ...topStrats(rows,'V',2).map(x=>({sec:'V',label:x[0]})),
     ...topStrats(rows,'DI',2).map(x=>({sec:'DI',label:x[0]})),
     ...topStrats(rows,'G',2).map(x=>({sec:'G',label:x[0]})),
-  ].filter((x,i,a)=>a.findIndex(y=>y.sec===x.sec&&y.label===x.label)===i).slice(0,6);
+  ].filter((x,i,a)=>a.findIndex(y=>y.sec===x.sec&&y.label===x.label)===i).slice(0,4);
   document.getElementById('heatSub').innerHTML=`Share of each score band mentioning repeated tactics. Tap a cell for examples.`;
   const cells=[];
   cells.push('<div class="hmhead"></div>');
@@ -876,7 +917,7 @@ function sectionCompare(d){
 function timelineSVG(det){
   const tl=(det.timeline||[]).filter(p=>p.score!=null);
   if(tl.length<2)return '';
-  const W=760,H=230,padL=46,padR=28,padT=28,padB=38,xs=(i)=>padL+i*(W-padL-padR)/(tl.length-1);
+  const W=760,H=320,padL=48,padR=30,padT=38,padB=48,xs=(i)=>padL+i*(W-padL-padR)/(tl.length-1);
   const vals=tl.map(p=>p.score),rawLo=Math.min(...vals),rawHi=Math.max(...vals),mid=(rawLo+rawHi)/2;
   const span=Math.max(60,rawHi-rawLo+36),lo=Math.max(400,Math.floor((mid-span/2)/10)*10),hi=Math.ceil((mid+span/2)/10)*10;
   const ys=(v)=>H-padB-(v-lo)/(hi-lo)*(H-padT-padB);
