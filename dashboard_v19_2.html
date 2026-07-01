@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>PrepSignals — your personal GMAT score plan</title>
-<meta name="description" content="Answer three quick questions and get a personal GMAT prep plan matched to 330 real debriefs from people who started near you and reached your target.">
+<meta name="description" content="Answer four quick questions and get a personal GMAT score path matched to 330 real debriefs from people who started near you and reached your target.">
 <script>
 window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};
 window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
@@ -67,7 +67,7 @@ header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
 .hero p.lede{font-size:clamp(16px,2.4vw,19px);color:var(--ink-2);max-width:62ch;margin:0 auto 8px}
 .hero p.lede b{color:var(--ink);font-weight:700}
 
-/* ---- quiz (3-question intake) ---- */
+/* ---- quiz (4-question intake) ---- */
 .quiz{max-width:720px;margin:26px auto 0}
 .qgroup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   padding:20px 20px 18px;box-shadow:var(--shadow);margin-bottom:14px;text-align:left}
@@ -104,6 +104,43 @@ header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
 .pacecall b{color:var(--ink)}
 .matchflag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
   color:var(--amber);background:var(--amber-l);border-radius:20px;padding:4px 10px;margin-top:10px}
+.primaryrec{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;margin-top:16px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.primaryrec::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--primary)}
+.primaryrec .ey{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--primary-d);background:var(--primary-l);
+  border-radius:20px;padding:4px 10px;margin-bottom:12px}
+.primaryrec h3{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:7px}
+.primaryrec p{font-size:14.5px;color:var(--ink-2);max-width:68ch;line-height:1.55}
+.primaryrec .metric{font-size:13px;color:var(--ink-2);margin-top:12px}
+.primaryrec .metric b{color:var(--ink);font-weight:800}
+.primaryrec .actbtn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  color:#fff;background:var(--primary);border-radius:12px;padding:11px 16px;font-size:14px;
+  font-weight:800;transition:.16s var(--ease);white-space:nowrap}
+.primaryrec .actbtn:hover{background:var(--primary-d);transform:translateY(-1px)}
+.leverintro{font-size:14.5px;color:var(--ink-2);margin-top:7px;max-width:62ch}
+.evidence{margin-top:20px}
+.evidence>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  cursor:pointer;padding:20px 22px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow)}
+.evidence>summary::-webkit-details-marker{display:none}
+.evidence h2{font-size:22px;font-weight:800}
+.evidence .sumsub{font-size:14px;color:var(--ink-2);margin-top:4px;max-width:68ch}
+.evidence .sumicon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:var(--primary-d);background:var(--primary-l);font-weight:900;transition:.18s var(--ease);flex:none}
+.evidence[open] .sumicon{transform:rotate(180deg)}
+.evidencebody{padding:20px 0 0}
+.signalgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.signalcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.signalcard::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--sc,var(--primary))}
+.signalcard .k{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--sc,var(--primary));margin-bottom:10px}
+.signalcard h3{font-size:17px;font-weight:800;margin-bottom:7px}
+.signalcard p{font-size:13.5px;color:var(--ink-2);line-height:1.48}
+.signalcard button{display:inline-flex;align-items:center;gap:7px;margin-top:14px;color:var(--sc,var(--primary));
+  background:var(--scl,var(--primary-l));border-radius:11px;padding:9px 12px;font-size:13px;font-weight:800}
 
 /* ---- band picker (explore tab) ---- */
 .bands{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 auto;max-width:760px}
@@ -140,7 +177,7 @@ section.block{padding:34px 0}
 .grid2>.panel .growfill{flex:1}
 
 /* ---- action plan ---- */
-.actiongrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
+.actiongrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
 .actioncard{min-height:232px;text-align:left;background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;
   position:relative;overflow:hidden;transition:.2s var(--ease)}
@@ -280,6 +317,43 @@ select.pick:focus{border-color:var(--primary)}
 .cohortmeta{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
 .cohortmeta span{font-size:12.5px;font-weight:750;color:var(--ink-2);background:var(--surface);
   border:1px solid var(--border);border-radius:20px;padding:5px 10px}
+.cohortinsight{margin-bottom:18px}
+.draweranswer{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.draweranswer::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--drawer,var(--primary))}
+.draweranswer .ey{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--drawer,var(--primary));background:var(--drawer-l,var(--primary-l));
+  border-radius:20px;padding:4px 10px;margin-bottom:12px}
+.draweranswer h3{font-size:23px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
+.draweranswer p{font-size:15px;color:var(--ink-2);line-height:1.58;max-width:72ch}
+.insightstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}
+.insightstat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
+.insightstat .n{font-size:23px;font-weight:800;letter-spacing:-.03em;color:var(--primary);line-height:1}
+.insightstat .l{font-size:12px;font-weight:700;color:var(--ink-2);margin-top:4px;line-height:1.25}
+.insightgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
+.insightpanel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;box-shadow:var(--shadow)}
+.insightpanel h3{font-size:16px;font-weight:800;margin-bottom:12px}
+.takeaways{list-style:none;display:flex;flex-direction:column;gap:11px}
+.takeaways li{position:relative;padding-left:24px;font-size:14px;color:var(--ink);line-height:1.5}
+.takeaways li::before{content:"";position:absolute;left:5px;top:8px;width:7px;height:7px;border-radius:50%;
+  background:var(--drawer,var(--primary))}
+.nextmove{margin-top:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;
+  padding:14px 16px;font-size:14px;color:var(--ink-2);line-height:1.5}
+.nextmove b{color:var(--ink)}
+.stackchips{display:flex;flex-wrap:wrap;gap:8px}
+.stackchips span{font-size:13px;font-weight:700;color:var(--ink);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:20px;padding:6px 11px}
+.cohortexamples{margin:18px 0 46px}
+.cohortexamples>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow);margin-bottom:14px}
+.cohortexamples>summary::-webkit-details-marker{display:none}
+.cohortexamples h3{font-size:18px;font-weight:800}
+.cohortexamples p{font-size:13.5px;color:var(--ink-2);margin-top:3px}
+.cohortexamples .sumicon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:var(--primary-d);background:var(--primary-l);transition:.18s var(--ease);flex:none}
+.cohortexamples[open] .sumicon{transform:rotate(180deg)}
 .dhero{padding:30px 0 8px}
 .dhero .dscore{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
 .dhero .big{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--green-d)}
@@ -429,13 +503,20 @@ footer a{color:var(--ink-2);font-weight:600}
   .hero{padding:34px 0 8px}
   .qopts{grid-template-columns:1fr 1fr}
   .planhead .ptop{flex-direction:column}
+  .primaryrec{grid-template-columns:1fr;padding:18px}
+  .primaryrec .actbtn{width:100%}
+  .evidence>summary{padding:18px}
+  .evidencebody{padding:18px 0 0}
   .bands{grid-template-columns:1fr;gap:11px;max-width:440px}
   .band{padding:16px 17px}
   .band .bblurb{min-height:0}
   .band .barrow{opacity:1;transform:none}
   .actiongrid{grid-template-columns:1fr;gap:12px}
   .actioncard{min-height:0}
+  .signalgrid{grid-template-columns:1fr;gap:12px}
   .statrow{grid-template-columns:1fr 1fr;gap:10px}
+  .insightstats{grid-template-columns:1fr 1fr}
+  .insightgrid{grid-template-columns:1fr}
   .grid2{grid-template-columns:1fr}
   .grid2>.panel{min-height:0;height:auto}
   .secinsights{grid-template-columns:1fr}
@@ -475,7 +556,7 @@ footer a{color:var(--ink-2);font-weight:600}
 <header class="bar"><div class="wrap">
   <a class="logo" href="?" onclick="goHome(event)">Prep<b>Signals</b><span class="dot"></span></a>
   <nav class="nav">
-    <button id="nav-plan" class="on" onclick="showView('plan')"><span class="navfull">Your plan</span><span class="navshort">Plan</span></button>
+    <button id="nav-plan" class="on" onclick="showView('plan')"><span class="navfull">My Score Path</span><span class="navshort">Path</span></button>
     <button id="nav-explore" onclick="showView('explore')"><span class="navfull">Explore the data</span><span class="navshort">Explore</span></button>
     <button id="nav-about" onclick="showView('about')">About</button>
   </nav>
@@ -485,8 +566,8 @@ footer a{color:var(--ink-2);font-weight:600}
   <div class="wrap">
     <section class="hero">
       <span class="eyebrow"><span class="pulse"></span>330 real GMAT debriefs</span>
-      <h1>Get your plan from people who hit your score</h1>
-      <p class="lede">Answer three quick questions. We match you to debriefs from people who started near your level and reached your target.</p>
+      <h1>Find your score path from people who got there</h1>
+      <p class="lede">Answer four quick questions. We match you to debriefs from people who started near your level and reached your target.</p>
     </section>
     <div class="quiz" id="quiz"></div>
     <div id="planResult"></div>
@@ -568,13 +649,13 @@ footer a{color:var(--ink-2);font-weight:600}
 
 <section id="view-about" class="hidden"><div class="wrap about" style="padding-top:42px;padding-bottom:42px">
   <h2>About PrepSignals</h2>
-  <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Answer three quick questions on the Your Plan tab, or pick a score range under Explore the Data to see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
+  <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Answer four quick questions on My Score Path, or pick a score range under Explore the Data to see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
   <h3>Where the data comes from</h3>
   <p>Every debrief links back to its original public post on Reddit's r/GMAT and GMAT Club. We only summarise — the source is always one tap away so you can read it in full and judge for yourself.</p>
   <h3>Independence</h3>
   <p>PrepSignals is independent and isn't affiliated with GMAC, any prep company, or any course. Resources are named because the original posters named them, not because anyone paid to appear. Debriefs that read like promotions are flagged "Maybe Promo" so you can weigh them.</p>
   <h3>Privacy</h3>
-  <p>No accounts, no login, no backend. Your three answers on the Your Plan tab are saved only in your own browser's local storage so a return visit skips the questions — nothing is sent to a server, and nothing identifies you. We use Vercel's privacy-friendly aggregate analytics to see which plans and stories are useful.</p>
+  <p>No accounts, no login, no backend. Your four answers on My Score Path are saved only in your own browser's local storage so a return visit skips the questions — nothing is sent to a server, and nothing identifies you. We use Vercel's privacy-friendly aggregate analytics to see which paths and stories are useful.</p>
   <h3>Feedback</h3>
   <p>If you want to see more features, notice something wrong, or have feedback, please email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
   <p>If you are the author of a post represented in this project and want it removed or corrected, contact <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
@@ -600,7 +681,14 @@ footer a{color:var(--ink-2);font-weight:600}
       <p id="cohortSub"></p>
       <div class="cohortmeta" id="cohortMeta"></div>
     </div>
-    <div class="cards" id="cohortCards"></div>
+    <div class="cohortinsight hidden" id="cohortInsight"></div>
+    <details class="cohortexamples" id="cohortExamples">
+      <summary>
+        <div><h3 id="cohortExamplesTitle">Example debriefs</h3><p id="cohortExamplesSub"></p></div>
+        <span class="sumicon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
+      </summary>
+      <div class="cards" id="cohortCards"></div>
+    </details>
   </div>
 </div></div>
 
@@ -615,10 +703,17 @@ const RM=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)'
 const BANDC={b1:{c:'var(--blue)',d:'var(--blue)',l:'var(--blue-l)'},
             b2:{c:'var(--primary)',d:'var(--primary-d)',l:'var(--primary-l)'},
             b3:{c:'var(--violet)',d:'var(--violet)',l:'var(--violet-l)'}};
+const FOCUS=[
+  {key:'q',label:'Quant',sub:'Math accuracy, speed, or concepts',sec:'q'},
+  {key:'v',label:'Verbal',sub:'CR, RC, or answer-choice traps',sec:'v'},
+  {key:'di',label:'Data Insights',sub:'DS, tables, graphs, or MSR',sec:'di'},
+  {key:'timing',label:'Timing / test day',sub:'Pacing, stamina, or execution',sec:null},
+  {key:'unsure',label:'Not sure',sub:'Use the cohort signal',sec:null},
+];
 const MIN_PEERS=6;
 const LS_KEY='ps_plan_v1';
 let state={band:'b2',focus:'auto'};
-let plan={cur:null,tgt:null,wk:null};
+let plan={cur:null,tgt:null,wk:null,focus:null};
 let showIntakeForm=true;
 let exploreInit=false;
 
@@ -628,6 +723,7 @@ function inBand(d,b){return d.total!=null&&d.total>=b.lo&&d.total<=b.hi;}
 function bandOf(key){return BANDS.find(b=>b.key===key);}
 function curBucketOf(key){return CURB.find(c=>c.key===key);}
 function wkBucketOf(key){return WEEKB.find(w=>w.key===key);}
+function focusOf(key){return FOCUS.find(f=>f.key===key)||FOCUS.find(f=>f.key==='unsure');}
 function debsIn(b){return DEB.filter(d=>inBand(d,b));}
 function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function pct(n,d){return d?Math.round(100*n/d):0;}
@@ -690,6 +786,22 @@ function sectionInsight(rows,key,exclude){
   const withNotes=rows.filter(d=>((DETAILS[d.id]&&DETAILS[d.id].sections&&DETAILS[d.id].sections[secCode])||[]).length).length;
   return{key,name:sectionLabel(key),med,top:topStrats(rows,secCode,3),quotes:sectionQuotes(rows,secCode,3,exclude),withNotes};
 }
+function overallQuotes(rows,limit){
+  const seen=new Set(),out=[];
+  rows.slice().sort((a,b)=>richScore(b)-richScore(a)).forEach(d=>{
+    if(out.length>=(limit||3)||seen.has(d.id))return;
+    const notes=(DETAILS[d.id]&&DETAILS[d.id].overall)||[];
+    const pick=notes.find(n=>n&&!out.some(q=>q.text===n));
+    if(!pick)return;
+    seen.add(d.id);out.push({id:d.id,text:pick});
+  });
+  return out;
+}
+function topParsedStrats(rows,predicate,limit){
+  return countBy(rows,d=>(d.strat||[]).map(parseStrat).filter(predicate).map(p=>p.sec+'|'+p.label))
+    .slice(0,limit||5).map(([k,n])=>{const i=k.indexOf('|');return {sec:k.slice(0,i),label:k.slice(i+1),n};});
+}
+function rowsForParsed(rows,item){return item?rowsForStrat(rows,item.sec,item.label):rows;}
 const SECCOL={q:['--blue','--blue-l'],v:['--violet','--violet-l'],di:['--amber','--amber-l']};
 function renderSectionInsights(containerId,rows){
   const el=document.getElementById(containerId);if(!el)return;
@@ -724,11 +836,13 @@ const SECNAME={Q:'Quant',V:'Verbal',DI:'Data',G:'General'};
 function loadPlanLS(){
   try{const raw=localStorage.getItem(LS_KEY);if(!raw)return null;
     const o=JSON.parse(raw);
-    if(o&&CURB.find(c=>c.key===o.cur)&&BANDS.find(b=>b.key===o.tgt)&&WEEKB.find(w=>w.key===o.wk))return o;
+    if(o&&CURB.find(c=>c.key===o.cur)&&BANDS.find(b=>b.key===o.tgt)&&WEEKB.find(w=>w.key===o.wk)){
+      return {cur:o.cur,tgt:o.tgt,wk:o.wk,focus:FOCUS.find(f=>f.key===o.focus)?o.focus:'unsure'};
+    }
   }catch(e){}
   return null;
 }
-function savePlanLS(){try{localStorage.setItem(LS_KEY,JSON.stringify({cur:plan.cur,tgt:plan.tgt,wk:plan.wk}));}catch(e){}}
+function savePlanLS(){try{localStorage.setItem(LS_KEY,JSON.stringify({cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus||'unsure'}));}catch(e){}}
 
 function peersFor(tgtKey,curKey){
   const b=bandOf(tgtKey),rows=debsIn(b),cur=curBucketOf(curKey);
@@ -744,6 +858,37 @@ function paceNote(peers,wk){
   if(wk.hi<med*0.7)return `Your timeline (<b>${esc(wk.label)}</b>) is tighter than the median <b>${fmt(med)}w</b> prep in this cohort — lean on official mocks and the resource stack below rather than broad review.`;
   if(wk.lo>med*1.5)return `You have more runway than the median <b>${fmt(med)}w</b> prep in this cohort — a good case for deeper section-by-section work instead of a sprint.`;
   return `Your timeline lines up with the median <b>${fmt(med)}w</b> prep reported in this cohort.`;
+}
+function selectedSectionKey(peers){
+  const f=focusOf(plan.focus);
+  if(f&&f.sec)return f.sec;
+  const weak=weakestSection(peers);
+  return weak?weak.key:'di';
+}
+function primaryRecommendation(peers,wk){
+  const f=focusOf(plan.focus),weak=weakestSection(peers),genTop=topStrats(peers,'G',1)[0];
+  if(f.key==='timing'){
+    const label=genTop?genTop[0]:'timed review loop';
+    return {
+      h:'Tighten your timed review loop',
+      p:`You said timing or test day feels hardest. Make the next block about timed sets, official-mock review, and move-on rules before adding broad content review.${weak?` Keep ${weak.name} as your checkpoint because it is the lowest median split in this cohort.`:''}`,
+      m:genTop?`<b>${pct(genTop[1],peers.length)}%</b> of matching debriefs mention ${esc(label)}.`:`Use the insight drawer examples to copy concrete pacing rules.`,
+      a:'Open timing insight',
+      kind:'timing'
+    };
+  }
+  const secKey=selectedSectionKey(peers),secName=sectionLabel(secKey),top=topStrats(peers,sectionCode(secKey),1)[0];
+  const because=f.sec
+    ?`You said ${secName} feels hardest, so start there even if another section also looks noisy.`
+    :weak?`${weak.name} is the lowest median split among debriefs like yours.`
+      :'The cohort does not have enough complete section splits, so start with one section at a time.';
+  return {
+    h:`Start with ${secName}`,
+    p:`${because} Use your next study block to sort misses by concept, timing, and careless errors, then drill the pattern that repeats.`,
+    m:top?`<b>${pct(top[1],peers.length)}%</b> of matching debriefs mention ${esc(top[0])}.`:`<b>${rowsForSection(peers,secKey).length}</b> matching examples include ${esc(secName)} details.`,
+    a:`Open ${secName} insight`,
+    kind:'section'
+  };
 }
 
 function pickPlan(field,key){plan[field]=key;renderQuiz();}
@@ -766,18 +911,23 @@ function renderQuiz(){
       <div class="qsub">Roughly — this only shapes pacing advice, not the target.</div>
       <div class="qopts">${WEEKB.map(w=>`<button type="button" class="qopt ${plan.wk===w.key?'on':''}" onclick="pickPlan('wk','${w.key}')"><div class="ol">${esc(w.label)}</div></button>`).join('')}</div>
     </div>
+    <div class="qgroup">
+      <div class="qtitle"><span class="qn">4</span> What feels hardest right now?</div>
+      <div class="qsub">This decides the first recommendation. Pick Not sure if you want the data to choose.</div>
+      <div class="qopts">${FOCUS.map(f=>`<button type="button" class="qopt ${plan.focus===f.key?'on':''}" onclick="pickPlan('focus','${f.key}')"><div class="ol">${esc(f.label)}</div><div class="os">${esc(f.sub)}</div></button>`).join('')}</div>
+    </div>
     ${match?`<div class="quizmatch">${match.matched?`<b>${match.peers.length}</b> debriefs closely match this so far.`:`Not many exact matches yet — we will use the full ${esc(bandOf(plan.tgt).label)} band (<b>${match.rows.length}</b> debriefs) instead.`}</div>`:''}
     <div class="quizsubmit-wrap">
-      <button type="button" class="quizsubmit" id="quizSubmit" ${(plan.cur&&plan.tgt&&plan.wk)?'':'disabled'} onclick="submitPlan()">Build my plan
+      <button type="button" class="quizsubmit" id="quizSubmit" ${(plan.cur&&plan.tgt&&plan.wk&&plan.focus)?'':'disabled'} onclick="submitPlan()">Show my score path
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </div>`;
 }
 function submitPlan(){
-  if(!(plan.cur&&plan.tgt&&plan.wk))return;
+  if(!(plan.cur&&plan.tgt&&plan.wk&&plan.focus))return;
   savePlanLS();showIntakeForm=false;
-  history.replaceState({},'', '?p='+plan.cur+'-'+plan.tgt+'-'+plan.wk);
-  track('intake_submit',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk});
+  history.replaceState({},'', '?p='+plan.cur+'-'+plan.tgt+'-'+plan.wk+'-'+plan.focus);
+  track('intake_submit',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus});
   renderPlanView();
   scrollTo({top:0,behavior:RM?'auto':'smooth'});
 }
@@ -785,7 +935,7 @@ function editPlan(){showIntakeForm=true;track('intake_edit',{});renderPlanView()
 
 function renderPlanView(){
   const q=document.getElementById('quiz'),r=document.getElementById('planResult');
-  if(!plan.cur||!plan.tgt||!plan.wk||showIntakeForm){
+  if(!plan.cur||!plan.tgt||!plan.wk||!plan.focus||showIntakeForm){
     q.classList.remove('hidden');renderQuiz();r.innerHTML='';
   }else{
     q.classList.add('hidden');renderPlanResult();
@@ -795,12 +945,14 @@ function renderPlanResult(){
   const{rows,peers,matched}=peersFor(plan.tgt,plan.cur);
   const b=bandOf(plan.tgt),cur=curBucketOf(plan.cur),wk=wkBucketOf(plan.wk);
   const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null),gains=peers.map(d=>d.gain).filter(x=>x!=null);
-  const pace=paceNote(peers,wk);
+  const pace=paceNote(peers,wk),focus=focusOf(plan.focus),rec=primaryRecommendation(peers,wk);
+  const curShort=cur.label.replace(' – ','-'),targetShort=b.label.replace(' – ','-');
+  const wkShort=wk.label.replace('Less than 4 weeks','<4w').replace('13+ weeks','13w+').replace(/ – /g,'-').replace(' weeks','w');
   const stats=[
-    {v:peers.length,l:matched?'closest matches':'band-wide sample',cls:''},
-    {v:gains.length?'+'+fmt(median(gains)):'—',l:'median score gain',cls:'coral'},
-    {v:prep.length?fmt(median(prep))+'w':'—',l:'median prep time',cls:''},
-    {v:rows.length,l:`total in ${b.label}`,cls:'green'},
+    {v:curShort,l:'current range',cls:''},
+    {v:targetShort,l:'target range',cls:'green'},
+    {v:wkShort,l:'timeline',cls:''},
+    {v:peers.length,l:matched?'closest matches':'band-wide sample',cls:'coral'},
   ];
   // score-band jump framing: how the current bucket reaches the target band
   const startersCur=DEB.filter(d=>d.start!=null&&cur&&d.start>=cur.lo&&d.start<=cur.hi);
@@ -817,17 +969,13 @@ function renderPlanResult(){
   document.getElementById('planResult').innerHTML=`
     <div class="planhead">
       <div class="ptop">
-        <div><h2>Your plan: ${esc(cur.label)} &rarr; ${esc(b.label)}</h2>
-          <p>Built from ${matched?`<b>${peers.length}</b> debriefs that started around your level and reached ${esc(b.label)}`:`the full ${esc(b.label)} band — not enough close starting-score matches yet, so this is band-wide`}. Timeline: ${esc(wk.label)}.</p>
+        <div><h2>Path summary: ${esc(cur.label)} &rarr; ${esc(b.label)}</h2>
+          <p>Built from ${matched?`<b>${peers.length}</b> debriefs that started around your level and reached ${esc(b.label)}`:`the full ${esc(b.label)} band — not enough close starting-score matches yet, so this is band-wide`}. Your first focus: <b>${esc(focus.label)}</b>.</p>
           ${!matched?`<span class="matchflag">Band-wide data — few exact starting-score matches</span>`:''}
         </div>
         <button class="editlink" type="button" onclick="editPlan()">Change my answers</button>
       </div>
       <div class="statrow" style="margin-top:18px">${stats.map(s=>`<div class="stat ${s.cls}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')}</div>
-      ${pace?`<div class="pacecall">${pace}</div>`:''}
-    </div>
-    <div class="panel" style="margin-top:16px">
-      <h3>The jump you're planning <span class="hint">${esc(cur.label)} → ${esc(b.label)}</span></h3>
       <div class="bandjump">
         <div class="jumprow">
           <div class="jumpnode"><div class="jn">${esc(cur.label)}</div><div class="jl">You now</div></div>
@@ -836,59 +984,94 @@ function renderPlanResult(){
         </div>
         <div class="jnote">${jnote}</div>
       </div>
+      ${pace?`<div class="pacecall">${pace}</div>`:''}
     </div>
-    <div class="actiongrid" id="planActions" style="margin-top:18px"></div>
-    <section class="block" id="planInsights">
-      <div class="shead"><div><h2>What actually helped, section by section</h2><p class="sub" id="planInsSub"></p></div></div>
-      <div class="secinsights" id="planSecInsights"></div>
+    <section class="primaryrec" id="doFirst">
+      <div>
+        <span class="ey">Do this first</span>
+        <h3>${esc(rec.h)}</h3>
+        <p>${rec.p}</p>
+        <div class="metric">${rec.m}</div>
+      </div>
+      <button class="actbtn" type="button" onclick="handlePlanAction('${rec.kind}')">${esc(rec.a)}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
     </section>
-    <section class="block" id="planAnalytics">
-      <div class="shead"><div><h2>Inside the ${esc(b.label)} range</h2>
-        <p class="sub">Score-band insights from all <b>${rows.length}</b> debriefs at your target — where scores land, section balance, resources, and tactic adoption.</p></div></div>
-      <div class="panel">
-        <h3>Where scores land <span class="hint">your target band highlighted</span></h3>
-        <div class="chartbox" id="planDist" style="margin-top:8px"></div>
-      </div>
-      <div class="grid2" style="margin-top:16px">
-        <div class="panel insightcard">
-          <h3>Typical section split</h3>
-          <p class="psub">Median Q / V / DI among ${esc(b.label)} debriefs with complete splits.</p>
-          <div class="seccompare growfill" id="planSplit" style="margin-top:4px"></div>
-          <div class="callout" id="planSplitCall"></div>
-        </div>
-        <div class="panel insightcard">
-          <h3>What they studied with</h3>
-          <p class="psub">Most-named resources in this range — popularity, not proof.</p>
-          <div class="growfill" id="planRes"></div>
-        </div>
-      </div>
-      <div class="grid2" style="margin-top:16px">
-        <div class="panel insightcard">
-          <h3>Prep &amp; gain context</h3>
-          <p class="psub">Only some debriefs report these, so treat them as planning bounds.</p>
-          <div class="minirow" id="planPrep"></div>
-        </div>
-        <div class="panel insightcard">
-          <h3>Tactic adoption by band <span class="hint">tap a cell for examples</span></h3>
-          <p class="psub">How often each recurring tactic shows up across score bands.</p>
-          <div class="heatmap growfill" id="planHeat"></div>
-        </div>
-      </div>
+    <section class="block" id="planLevers">
+      <div class="shead"><div><h2>Your 3 levers</h2><p class="sub">Use these as the working plan: one section focus, one practice loop, and one resource stack, each summarized before the example debriefs.</p></div></div>
+      <div class="actiongrid" id="planActions"></div>
     </section>
-    <section class="block" id="planEvidence">
-      <div class="shead"><div><h2>Proof behind your plan</h2><p class="sub">Real debriefs closest to your situation.</p></div></div>
-      <div class="cards" id="planCards"></div>
-      <button class="morebtn" onclick="showView('explore')">Open the full data explorer <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-    </section>`;
+    <section class="block" id="planSignals">
+      <div class="shead"><div><h2>What the debriefs are telling you</h2><p class="sub">Three signals from the matched cohort, summarized before you read individual stories.</p></div></div>
+      <div class="signalgrid" id="planSignalsGrid"></div>
+    </section>
+    <details class="evidence" id="planEvidence">
+      <summary>
+        <div><h2>Example debriefs</h2>
+          <p class="sumsub">Optional supporting stories closest to your starting point, target, and timeline.</p></div>
+        <span class="sumicon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
+      </summary>
+      <div class="evidencebody">
+        <div class="cards" id="planCards"></div>
+        <button class="morebtn" onclick="openTargetExplore()">Explore ${esc(b.label)} data <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </div>
+    </details>
+    <details class="evidence" id="planAnalytics">
+      <summary>
+        <div><h2>Explore the evidence</h2>
+          <p class="sumsub">Target-band charts from all <b>${rows.length}</b> ${esc(b.label)} debriefs. Open this when you want the deeper data behind the path.</p></div>
+        <span class="sumicon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
+      </summary>
+      <div class="evidencebody">
+        <section class="block" id="planInsights" style="padding-top:0">
+          <div class="shead"><div><h2>Section evidence</h2><p class="sub" id="planInsSub"></p></div></div>
+          <div class="secinsights" id="planSecInsights"></div>
+        </section>
+        <section class="block" style="padding-top:0">
+          <div class="shead"><div><h2>Inside the ${esc(b.label)} range</h2>
+            <p class="sub">Score-band insights from all <b>${rows.length}</b> debriefs at your target — where scores land, section balance, resources, and tactic adoption.</p></div></div>
+          <div class="panel">
+            <h3>Where scores land <span class="hint">your target band highlighted</span></h3>
+            <div class="chartbox" id="planDist" style="margin-top:8px"></div>
+          </div>
+          <div class="grid2" style="margin-top:16px">
+            <div class="panel insightcard">
+              <h3>Typical section split</h3>
+              <p class="psub">Median Q / V / DI among ${esc(b.label)} debriefs with complete splits.</p>
+              <div class="seccompare growfill" id="planSplit" style="margin-top:4px"></div>
+              <div class="callout" id="planSplitCall"></div>
+            </div>
+            <div class="panel insightcard">
+              <h3>What they studied with</h3>
+              <p class="psub">Most-named resources in this range — popularity, not proof.</p>
+              <div class="growfill" id="planRes"></div>
+            </div>
+          </div>
+          <div class="grid2" style="margin-top:16px">
+            <div class="panel insightcard">
+              <h3>Prep &amp; gain context</h3>
+              <p class="psub">Only some debriefs report these, so treat them as planning bounds.</p>
+              <div class="minirow" id="planPrep"></div>
+            </div>
+            <div class="panel insightcard">
+              <h3>Tactic adoption by band <span class="hint">tap a cell for examples</span></h3>
+              <p class="psub">How often each recurring tactic shows up across score bands.</p>
+              <div class="heatmap growfill" id="planHeat"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </details>`;
   renderPlanActions(peers,b);
+  renderPlanSignals(peers,b);
   document.getElementById('planInsSub').innerHTML=`Aggregated from the same <b>${peers.length}</b> debriefs behind your plan — no need to open each one individually.`;
   renderSectionInsights('planSecInsights',peers);
   renderPlanAnalytics();
   document.getElementById('planCards').innerHTML=bestExamples(peers,6).map(debCardHTML).join('');
-  track('plan_view',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,matched,sample:peers.length});
+  track('plan_view',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus,matched,sample:peers.length});
 }
 function planAnalyticsShown(){
-  return !!(plan.cur&&plan.tgt&&plan.wk&&!showIntakeForm&&document.getElementById('planDist')
+  return !!(plan.cur&&plan.tgt&&plan.wk&&plan.focus&&!showIntakeForm&&document.getElementById('planDist')
     &&!document.getElementById('view-plan').classList.contains('hidden'));
 }
 function renderPlanAnalytics(){
@@ -931,34 +1114,217 @@ function renderPlanAnalytics(){
     heatEl.innerHTML=cells.join('');
   }
 }
+function insightStatsHTML(items){
+  return `<div class="insightstats">${items.map(x=>`<div class="insightstat"><div class="n">${x.v}</div><div class="l">${esc(x.l)}</div></div>`).join('')}</div>`;
+}
+function takeawaysHTML(items){
+  return `<ul class="takeaways">${items.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+}
+function noteHTML(quotes,color){
+  if(!quotes.length)return '<div class="empty2" style="color:var(--ink-3);font-size:13px">Not enough detailed notes in this slice yet.</div>';
+  return `<ul class="notelist" style="--bullet:${color||'var(--primary)'}">${quotes.map(q=>`<li>${esc(q.text)}</li>`).join('')}</ul>`;
+}
+function sectionBalanceHTML(rows,highlight){
+  const med=sectionMedians(rows),cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
+  const slo=55,shi=90,scale=v=>Math.max(2,Math.min(100,Math.round(100*(v-slo)/(shi-slo))));
+  const html=[['q','Quant'],['v','Verbal'],['di','Data Insights']].map(([k,name])=>{
+    const m=med[k]!=null?Math.round(med[k]):null;if(m==null)return '';
+    return `<div class="cmp"><div class="cl">${name}${k===highlight?'<small>your focus</small>':''}</div>
+      <div class="ctrack"><div class="cbar" style="--w:${scale(m)}%;background:${cm[k]}"></div></div>
+      <div class="cscore" style="color:${cm[k]}">${m}</div></div>`;
+  }).join('');
+  return html?`<div class="seccompare">${html}</div>`:'<div class="empty2" style="color:var(--ink-3);font-size:13px">No complete section splits in this cohort.</div>';
+}
+function planSectionInsight(peers,b){
+  const key=selectedSectionKey(peers),secName=sectionLabel(key),secCode=sectionCode(key),[c,cl]=SECCOL[key];
+  const ins=sectionInsight(peers,key,new Set()),pool=rowsForSection(peers,key),top=ins.top[0];
+  const med=ins.med!=null?Math.round(ins.med):'—';
+  const topPct=top?pct(top[1],peers.length):0;
+  const take=[
+    top?`<b>${esc(top[0])}</b> is the clearest repeated ${esc(secName)} tactic in this peer set (${topPct}% mention it).`:`The peer set is thin on repeated ${esc(secName)} tactics, so use the notes and examples as qualitative guidance.`,
+    ins.med!=null?`The typical ${esc(secName)} split is <b>${med}</b>, so treat your next mock as a diagnostic against that benchmark.`:`Not enough complete ${esc(secName)} scores appear here to set a reliable numeric benchmark.`,
+    `<b>${ins.withNotes}</b> of ${peers.length} matching debriefs include detailed ${esc(secName)} notes; copy the error-review behavior, not just the resource names.`,
+  ];
+  const next=`Next move: run one timed ${esc(secName)} set, tag every miss as concept / timing / careless, then drill only the top repeated miss type before your next mock.`;
+  return {
+    title:`${secName} insight`,
+    sub:`The pattern behind “Start with ${secName}.”`,
+    rows:bestExamples(pool,12),
+    meta:{kind:'section',band:b.label,section:secName,sample:pool.length},
+    html:`
+      <div class="draweranswer" style="--drawer:var(${c});--drawer-l:var(${cl})">
+        <span class="ey">Short answer</span>
+        <h3>Make ${esc(secName)} a feedback loop, not a broad review plan.</h3>
+        <p>The useful signal is where repeated misses cluster. Your first job is to convert those misses into targeted drills and pacing rules.</p>
+      </div>
+      ${insightStatsHTML([
+        {v:med,l:`typical ${secName}`},
+        {v:top?topPct+'%':'—',l:'top tactic share'},
+        {v:ins.withNotes,l:'detailed notes'},
+        {v:pool.length,l:'matching examples'},
+      ])}
+      <div class="insightgrid">
+        <div class="insightpanel"><h3>What the debriefs are telling you</h3>${takeawaysHTML(take)}</div>
+        <div class="insightpanel"><h3>Section balance</h3>${sectionBalanceHTML(peers,key)}</div>
+        <div class="insightpanel"><h3>Top ${esc(secName)} tactics</h3>${ins.top.length?hBarsHTML(ins.top,peers.length,{color:`var(${c})`}):'<div class="empty2" style="color:var(--ink-3);font-size:13px">No repeated tactics yet.</div>'}</div>
+        <div class="insightpanel"><h3>Representative notes</h3>${noteHTML(ins.quotes,`var(${c})`)}</div>
+      </div>
+      <div class="nextmove"><b>Suggested next move:</b> ${next}</div>`
+  };
+}
+function planHabitInsight(peers,b){
+  const top=topStrats(peers,'G',5),main=top[0],pool=main?rowsForStrat(peers,'G',main[0]):peers;
+  const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null),gains=peers.map(d=>d.gain).filter(x=>x!=null);
+  const quotes=overallQuotes(pool.length?pool:peers,3);
+  const take=[
+    main?`<b>${esc(main[0])}</b> is the strongest repeated habit (${pct(main[1],peers.length)}% of matching debriefs).`:'No single habit dominates, so use the closest debriefs to copy process details.',
+    'The recurring pattern is a loop: mock or timed set, review, targeted drill, then retest the same weakness.',
+    'Treat this as an operating rhythm. More questions only help when the review loop changes what you do next.',
+  ];
+  return {
+    title:'Practice-loop insight',
+    sub:'What people repeatedly did between mocks and drills.',
+    rows:bestExamples(pool.length?pool:peers,12),
+    meta:{kind:'habit',band:b.label,tactic:main&&main[0],sample:pool.length||peers.length},
+    html:`
+      <div class="draweranswer">
+        <span class="ey">Short answer</span>
+        <h3>Build a loop you can repeat every week.</h3>
+        <p>The debriefs rarely point to “just do more.” They point to repeated review behavior: timed work, error logging, targeted drills, and test-day execution rules.</p>
+      </div>
+      ${insightStatsHTML([
+        {v:main?pct(main[1],peers.length)+'%':'—',l:'top habit share'},
+        {v:prep.length?fmt(median(prep))+'w':'—',l:'median prep'},
+        {v:gains.length?'+'+fmt(median(gains)):'—',l:'median gain'},
+        {v:top.length,l:'repeated habits'},
+      ])}
+      <div class="insightgrid">
+        <div class="insightpanel"><h3>What the debriefs are telling you</h3>${takeawaysHTML(take)}</div>
+        <div class="insightpanel"><h3>Common practice habits</h3>${top.length?hBarsHTML(top,peers.length,{color:'var(--primary)'}):'<div class="empty2" style="color:var(--ink-3);font-size:13px">No repeated habits yet.</div>'}</div>
+        <div class="insightpanel"><h3>Representative notes</h3>${noteHTML(quotes,'var(--primary)')}</div>
+        <div class="insightpanel"><h3>Simple weekly loop</h3>${takeawaysHTML(['One timed set or mock block.','Review every miss and every slow solve.','Drill the top repeated error.','Retest the same pattern before changing focus.'])}</div>
+      </div>
+      <div class="nextmove"><b>Suggested next move:</b> Pick one recurring habit above and run it for seven days before adding another resource or topic.</div>`
+  };
+}
+function planResourceInsight(peers,b){
+  const top=topResources(peers,6),main=top[0],pool=main?peers.filter(d=>(d.resources||[]).includes(main[0])):peers;
+  const named=peers.filter(d=>(d.resources||[]).length),self=peers.filter(d=>(d.tags||[]).includes('Self Study')).length;
+  const quotes=overallQuotes(pool.length?pool:peers,3);
+  const chips=top.slice(0,5).map(([r])=>`<span>${esc(r)}</span>`).join('');
+  const take=[
+    main?`<b>${esc(main[0])}</b> is the most-mentioned resource, but that is a popularity signal, not proof of causality.`:'This peer slice does not name resources consistently, so lean more on process than brand choice.',
+    'The useful pattern is the stack: official calibration, targeted practice, and careful review.',
+    'Avoid copying every product name. Copy how students combined resources around their weakest section and mock review.',
+  ];
+  return {
+    title:'Resource-stack insight',
+    sub:'How matching debriefs talk about materials without treating popularity as causality.',
+    rows:bestExamples(pool.length?pool:peers,12),
+    meta:{kind:'resource',band:b.label,resource:main&&main[0],sample:pool.length||peers.length},
+    html:`
+      <div class="draweranswer" style="--drawer:var(--amber);--drawer-l:var(--amber-l)">
+        <span class="ey">Short answer</span>
+        <h3>Use resources as a stack, not a shopping list.</h3>
+        <p>The signal is not “buy the most-mentioned thing.” It is how students combined official material, practice banks, mocks, and review around a specific bottleneck.</p>
+      </div>
+      ${insightStatsHTML([
+        {v:main?pct(main[1],peers.length)+'%':'—',l:'top resource share'},
+        {v:named.length,l:'name resources'},
+        {v:self?pct(self,peers.length)+'%':'—',l:'self-study'},
+        {v:top.length,l:'resource signals'},
+      ])}
+      <div class="insightgrid">
+        <div class="insightpanel"><h3>What the debriefs are telling you</h3>${takeawaysHTML(take)}</div>
+        <div class="insightpanel"><h3>Most-mentioned resources</h3>${top.length?hBarsHTML(top,peers.length,{color:'var(--amber)'}):'<div class="empty2" style="color:var(--ink-3);font-size:13px">No named resources yet.</div>'}</div>
+        <div class="insightpanel"><h3>Likely stack to inspect</h3><div class="stackchips">${chips||'<span>No clear stack yet</span>'}</div></div>
+        <div class="insightpanel"><h3>Representative notes</h3>${noteHTML(quotes,'var(--amber)')}</div>
+      </div>
+      <div class="nextmove"><b>Suggested next move:</b> Choose one core resource for your weakest lever, then use official mocks or official-style review to decide whether it is working.</div>`
+  };
+}
+function planTimingInsight(peers,b){
+  const timing=topParsedStrats(peers,p=>/mock|review|timing|test-day|section-order|routine|mindset|error log|move/i.test(p.label),5);
+  const top=timing.length?timing:topParsedStrats(peers,p=>p.sec==='G',5),main=top[0],pool=main?rowsForParsed(peers,main):peers;
+  const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null),quotes=overallQuotes(pool.length?pool:peers,3);
+  const barData=top.map(x=>[x.label,x.n]);
+  const take=[
+    main?`<b>${esc(main.label)}</b> is the clearest execution signal (${pct(main.n,peers.length)}% mention it).`:'The peer set does not have one dominant execution habit, so use the examples for specific pacing rules.',
+    'Timing work should produce rules: when to move on, when to guess, and which section order keeps you calm.',
+    'A mock only helps if the review changes the next timed set.',
+  ];
+  return {
+    title:'Timing and test-day insight',
+    sub:'What to copy when pacing or execution feels like the hard part.',
+    rows:bestExamples(pool.length?pool:peers,12),
+    meta:{kind:'timing',band:b.label,tactic:main&&main.label,sample:pool.length||peers.length},
+    html:`
+      <div class="draweranswer" style="--drawer:var(--green);--drawer-l:var(--green-l)">
+        <span class="ey">Short answer</span>
+        <h3>Turn timing into rules before test day.</h3>
+        <p>The strongest execution debriefs describe decisions they made before the clock got stressful: section order, move-on rules, and how they reviewed mocks.</p>
+      </div>
+      ${insightStatsHTML([
+        {v:main?pct(main.n,peers.length)+'%':'—',l:'top timing signal'},
+        {v:prep.length?fmt(median(prep))+'w':'—',l:'median prep'},
+        {v:top.length,l:'execution signals'},
+        {v:pool.length||peers.length,l:'matching examples'},
+      ])}
+      <div class="insightgrid">
+        <div class="insightpanel"><h3>What the debriefs are telling you</h3>${takeawaysHTML(take)}</div>
+        <div class="insightpanel"><h3>Execution habits</h3>${barData.length?hBarsHTML(barData,peers.length,{color:'var(--green)'}):'<div class="empty2" style="color:var(--ink-3);font-size:13px">No repeated timing habits yet.</div>'}</div>
+        <div class="insightpanel"><h3>Representative notes</h3>${noteHTML(quotes,'var(--green)')}</div>
+        <div class="insightpanel"><h3>Rules to write down</h3>${takeawaysHTML(['What is my section order?','How long before I move on?','Which mistakes mean content, timing, or stress?','What will I review after each mock?'])}</div>
+      </div>
+      <div class="nextmove"><b>Suggested next move:</b> Write one move-on rule and one review rule, then test both in your next timed block.</div>`
+  };
+}
+function buildPlanInsight(kind,peers,b){
+  if(kind==='section')return planSectionInsight(peers,b);
+  if(kind==='resource')return planResourceInsight(peers,b);
+  if(kind==='timing')return planTimingInsight(peers,b);
+  return planHabitInsight(peers,b);
+}
+function renderPlanSignals(peers,b){
+  const el=document.getElementById('planSignalsGrid');if(!el)return;
+  const secKey=selectedSectionKey(peers),secName=sectionLabel(secKey),secTop=topStrats(peers,sectionCode(secKey),1)[0];
+  const genTop=topStrats(peers,'G',1)[0],resTop=topResources(peers,1)[0];
+  const cards=[
+    {k:'Bottleneck signal',h:`${secName} is the first lever`,p:secTop?`${pct(secTop[1],peers.length)}% mention ${secTop[0]}.`:`Use ${secName} as the next diagnostic checkpoint.`,kind:'section',c:'var(--blue)',l:'var(--blue-l)'},
+    {k:'Process signal',h:genTop?genTop[0]:'Review loop matters',p:genTop?`${pct(genTop[1],peers.length)}% name this habit.`:'Look for mock review, error logs, and targeted drilling.',kind:'habit',c:'var(--primary)',l:'var(--primary-l)'},
+    {k:'Stack signal',h:resTop?resTop[0]:'Resource stack',p:resTop?`${pct(resTop[1],peers.length)}% mention it; inspect usage, not popularity.`:'Copy the resource workflow, not the product list.',kind:'resource',c:'var(--amber)',l:'var(--amber-l)'},
+  ];
+  el.innerHTML=cards.map(x=>`<div class="signalcard" style="--sc:${x.c};--scl:${x.l}">
+    <div class="k">${x.k}</div><h3>${esc(x.h)}</h3><p>${esc(x.p)}</p>
+    <button type="button" onclick="handlePlanAction('${x.kind}')">Open insight
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </div>`).join('');
+}
 function renderPlanActions(peers,b){
-  const weak=weakestSection(peers),secKey=weak?weak.key:'di';
+  const focus=focusOf(plan.focus),weak=weakestSection(peers),secKey=selectedSectionKey(peers),secName=sectionLabel(secKey);
   const secTop=topStrats(peers,sectionCode(secKey),1)[0];
   const genTop=topStrats(peers,'G',3);
   const resTop=topResources(peers,3);
-  const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null),gains=peers.map(d=>d.gain).filter(x=>x!=null);
-  const proof=bestExamples(peers,6);
+  const sectionCopy=focus.sec
+    ?`${secName} is the difficulty you chose. Keep the first study block narrow enough that every miss can become a repeatable drill.`
+    :weak?`${weak.name} is the lowest median split among debriefs like yours. Use it as the first diagnostic checkpoint.`
+      :'Not enough full section splits in this cohort — separate Quant, Verbal, and DI practice from the start.';
   const cards=[
     {k:'Section focus',c:'var(--blue)',l:'var(--blue-l)',
-      h:weak?`Start with ${weak.name}`:'Start section by section',
-      p:weak?`${weak.name} is the lowest median split among debriefs like yours. Typical score here is ${weak.score}.`:'Not enough full section splits in this cohort — separate Quant, Verbal, and DI practice from the start.',
+      h:`Start with ${secName}`,
+      p:sectionCopy,
       m:secTop?`<b>${pct(secTop[1],peers.length)}%</b> mention ${esc(secTop[0])}`:`<b>${peers.length}</b> examples`,
-      a:'See section examples',kind:'section'},
+      a:'Open section insight',kind:'section'},
     {k:'Practice loop',c:'var(--primary)',l:'var(--primary-l)',
       h:genTop[0]?esc(genTop[0][0]):'Build a review loop',
       p:'The repeated pattern is not just doing more questions. People describe a loop of mocks, review, targeted drills, and test-day execution.',
       m:genTop[0]?`<b>${pct(genTop[0][1],peers.length)}%</b> name this habit`:`<b>${peers.length}</b> debriefs sampled`,
-      a:'Open habit examples',kind:'habit'},
+      a:'Open practice insight',kind:'habit'},
     {k:'Resource stack',c:'var(--amber)',l:'var(--amber-l)',
       h:resTop[0]?esc(resTop[0][0]):'Use named materials deliberately',
       p:'Resources are popularity signals, not proof of causality. The useful move is seeing how students combined official material, practice banks, and review.',
       m:resTop[0]?`<b>${pct(resTop[0][1],peers.length)}%</b> mention the top resource`:`<b>0</b> named resources`,
-      a:'See resource examples',kind:'resource'},
-    {k:'Proof examples',c:'var(--green)',l:'var(--green-l)',
-      h:'Read the closest stories first',
-      p:'These are the debriefs nearest to your starting point and target. Copy the process details rather than the exact product stack.',
-      m:prep.length||gains.length?`<b>${prep.length}</b> prep-time / <b>${gains.length}</b> gain samples`:`<b>${proof.length}</b> detailed stories`,
-      a:'Jump to proof',kind:'proof'},
+      a:'Open resource insight',kind:'resource'},
   ];
   document.getElementById('planActions').innerHTML=cards.map(x=>`
     <div class="actioncard" style="--ac:${x.c};--acl:${x.l}">
@@ -975,23 +1341,7 @@ function handlePlanAction(kind){
   const{peers}=peersFor(plan.tgt,plan.cur),b=bandOf(plan.tgt);
   track('plan_action_click',{kind,band:b.label});
   if(kind==='proof'){jumpPlanEvidence();return;}
-  if(kind==='section'){
-    const weak=weakestSection(peers),key=weak?weak.key:'di';
-    const pool=rowsForSection(peers,key);
-    openCohort(`${sectionLabel(key)} examples`,`${pool.length} debriefs like yours with ${sectionLabel(key)} scores, tactics, or notes.`,bestExamples(pool,12),{kind:'section',band:b.label,section:sectionLabel(key),sample:pool.length});
-    return;
-  }
-  if(kind==='habit'){
-    const top=topStrats(peers,'G',1)[0];
-    const pool=top?rowsForStrat(peers,'G',top[0]):peers;
-    openCohort(top?`${top[0]} examples`:'Practice-loop examples',`Examples from debriefs like yours that mention this habit.`,bestExamples(pool,12),{kind:'habit',band:b.label,tactic:top&&top[0],sample:pool.length});
-    return;
-  }
-  if(kind==='resource'){
-    const top=topResources(peers,1)[0];
-    const pool=top?peers.filter(d=>(d.resources||[]).includes(top[0])):peers;
-    openCohort(top?`${top[0]} examples`:'Resource examples',`Posts like yours that named this resource. Usage context, not an effectiveness ranking.`,bestExamples(pool,12),{kind:'resource',band:b.label,resource:top&&top[0],sample:pool.length});
-  }
+  openPlanInsight(buildPlanInsight(kind,peers,b));
 }
 function jumpPlanEvidence(){const t=document.getElementById('planEvidence');
   scrollTo({top:t.getBoundingClientRect().top+scrollY-70,behavior:RM?'auto':'smooth'});}
@@ -1128,6 +1478,13 @@ function renderFilterBar(){
 function xToggleBand(k){xf.bands.has(k)?xf.bands.delete(k):xf.bands.add(k);xLimit=12;renderFilterBar();renderExplore();track('x_filter',{band:k});}
 function xToggleSelf(){xf.self=!xf.self;xLimit=12;renderFilterBar();renderExplore();}
 function xReset(){xf={bands:new Set(),src:'',res:'',self:false};xLimit=12;renderFilterBar();renderExplore();}
+function openTargetExplore(){
+  const b=bandOf(plan.tgt);
+  if(b){xf={bands:new Set([b.key]),src:'',res:'',self:false};state.band=b.key;xLimit=12;history.pushState({},'', '?band='+b.lo);}
+  showView('explore');
+  renderFilterBar();renderExplore();
+  if(b)track('plan_explore_target',{band:b.label});
+}
 function renderXStat(rows){
   const tot=rows.map(d=>d.total).filter(x=>x!=null),g=rows.map(d=>d.gain).filter(x=>x!=null),p=rows.map(d=>d.prep_weeks).filter(x=>x!=null);
   const stats=[
@@ -1223,6 +1580,31 @@ function debCardHTML(d){
 /* legacy band-scoped explore renderers removed in v19.2 (see EXPLORE THE DATA + plan analytics) */
 
 /* ---------- cohort proof drawer ---------- */
+function openPlanInsight(insight){
+  const c=document.getElementById('cohort'),m=insight.meta||{},rows=insight.rows||[];
+  document.getElementById('cohortTitle').textContent=insight.title;
+  document.getElementById('cohortSub').textContent=insight.sub;
+  document.getElementById('cohortMeta').innerHTML=[
+    sampleText(rows.length,'examples'),
+    m.band?`<span>${esc(m.band)}</span>`:'',
+    m.section?`<span>${esc(m.section)}</span>`:'',
+    m.resource?`<span>${esc(m.resource)}</span>`:'',
+    m.tactic?`<span>${esc(m.tactic)}</span>`:'',
+  ].filter(Boolean).join('');
+  const insightEl=document.getElementById('cohortInsight');
+  insightEl.classList.remove('hidden');
+  insightEl.innerHTML=insight.html;
+  const ex=document.getElementById('cohortExamples');
+  ex.open=false;
+  document.getElementById('cohortExamplesTitle').textContent='Example debriefs';
+  document.getElementById('cohortExamplesSub').textContent='Optional supporting stories behind this pattern.';
+  document.getElementById('cohortCards').innerHTML=rows.length
+    ?rows.map(debCardHTML).join('')
+    :'<div class="empty">No matching examples in this slice yet.</div>';
+  c.classList.add('on');document.body.style.overflow='hidden';c.scrollTop=0;
+  observeGrow(c);
+  track('plan_insight_open',m);
+}
 function openCohort(title,sub,rows,meta){
   const c=document.getElementById('cohort'),m=meta||{};
   document.getElementById('cohortTitle').textContent=title;
@@ -1234,6 +1616,13 @@ function openCohort(title,sub,rows,meta){
     m.resource?`<span>${esc(m.resource)}</span>`:'',
     m.tactic?`<span>${esc(m.tactic)}</span>`:'',
   ].filter(Boolean).join('');
+  const insightEl=document.getElementById('cohortInsight');
+  insightEl.classList.add('hidden');
+  insightEl.innerHTML='';
+  const ex=document.getElementById('cohortExamples');
+  ex.open=true;
+  document.getElementById('cohortExamplesTitle').textContent='Matching debriefs';
+  document.getElementById('cohortExamplesSub').textContent='Open any card to read the summarized debrief and source link.';
   document.getElementById('cohortCards').innerHTML=rows.length
     ?rows.map(debCardHTML).join('')
     :'<div class="empty">No matching examples in this slice yet.</div>';
@@ -1406,8 +1795,9 @@ function observeGrow(root){
   const pp=p.get('p');
   if(pp){
     const parts=pp.split('-');
-    if(parts.length===3&&CURB.find(c=>c.key===parts[0])&&BANDS.find(b=>b.key===parts[1])&&WEEKB.find(w=>w.key===parts[2])){
-      plan={cur:parts[0],tgt:parts[1],wk:parts[2]};showIntakeForm=false;savePlanLS();
+    if((parts.length===3||parts.length===4)&&CURB.find(c=>c.key===parts[0])&&BANDS.find(b=>b.key===parts[1])&&WEEKB.find(w=>w.key===parts[2])){
+      const focus=FOCUS.find(f=>f.key===parts[3])?parts[3]:'unsure';
+      plan={cur:parts[0],tgt:parts[1],wk:parts[2],focus};showIntakeForm=false;savePlanLS();
     }
   }else{
     const saved=loadPlanLS();

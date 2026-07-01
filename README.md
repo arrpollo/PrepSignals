@@ -4,27 +4,33 @@ v.19.2 brings back the **data-insights depth of v.16** — the chart-heavy
 analytics dashboard — but rebuilt in the v.19 UI, and reorganises the two
 tabs into a clearer split:
 
-- **Your plan** — the personalized surface. Now *fuses in* the band-scoped
-  analytics that used to live on the Explore tab, plus a new **score-band
-  insights** panel.
+- **My Score Path** — the personalized surface. It is now action-first:
+  path summary, one first recommendation, three practical levers, synthesized
+  insight drawers, then optional example debriefs and lower evidence charts.
 - **Explore the data** — rebuilt as a **global, filterable charts dashboard**
   over every debrief (the old Explore band-picker is gone; its per-band
-  analytics moved into Your plan).
+  analytics now live here or in the collapsed evidence section on My Score
+  Path).
 
 Everything is hand-rolled SVG/CSS themed to the v.19 design system — no chart
 library, no CDN, no backend. Same 330 debriefs and same data files as v.19.
 
-## Your plan tab (fused + personalized)
+## My Score Path tab (action-first + personalized)
 
-After the 3-question intake (current score / target band / weeks to test),
-keyed to the matched peer cohort and the target band:
+After the 4-question intake (current score / target band / weeks to test /
+hardest area right now), keyed to the matched peer cohort and the target band:
 
-- **The jump you're planning** — a score-band panel framing
-  `current bucket → target band`: what share of debriefs that *started* in
-  your range reached your target, and the typical `start → total (+gain)`
-  path and prep time in your cohort.
-- **Action cards** and **per-section insights** (peer-matched) — unchanged.
-- **"Inside the &lt;band&gt; range"** — the deep-dive analytics, now inline:
+- **Path summary** — frames `current bucket → target band`, sample quality,
+  timeline, and the typical `start → total (+gain)` path where available.
+- **Do this first** — one first recommendation based on the user's hardest
+  area; "Not sure" falls back to the cohort's weakest-section signal.
+- **Your 3 levers** — section focus, practice loop, and resource stack, each
+  opening an insight-first drawer with stats, takeaways, and optional examples.
+- **What the debriefs are telling you** — compact synthesis cards before
+  individual stories.
+- **Example debriefs** — closest debrief cards remain available as optional
+  supporting evidence.
+- **Explore the evidence** — lower, collapsed target-band analytics:
   - **Where scores land** — score histogram with your target band highlighted.
   - **Typical section split** — median Q / V / DI, with the weakest called out.
   - **What they studied with** — most-named resources.
