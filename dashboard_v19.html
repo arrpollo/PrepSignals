@@ -326,9 +326,9 @@ select.pick:focus{border-color:var(--primary)}
 .origin:hover{background:var(--primary-d);transform:translateY(-1px)}
 
 /* ---- about ---- */
-.about h2{font-size:26px;font-weight:800;margin-bottom:8px}
-.about h3{font-size:16px;font-weight:800;margin:22px 0 6px}
-.about p{font-size:15px;color:var(--ink-2);max-width:68ch;margin-bottom:8px}
+.about h2{font-size:26px;font-weight:800;margin-bottom:12px}
+.about h3{font-size:16px;font-weight:800;margin:28px 0 8px}
+.about p{font-size:15px;color:var(--ink-2);max-width:68ch;margin-bottom:14px;line-height:1.65}
 .about a{color:var(--primary-d);font-weight:600}
 
 footer{border-top:1px solid var(--border);margin-top:40px;padding:30px 0 50px;color:var(--ink-3);font-size:13.5px}
@@ -340,12 +340,13 @@ footer a{color:var(--ink-2);font-weight:600}
 /* ---- mobile ---- */
 @media(max-width:760px){
   .wrap{padding:0 16px}
-  .bar .wrap{gap:4px}
-  .logo{font-size:15px}
-  .nav{gap:3px}
-  .nav button{font-size:11.5px;padding:6px 7px}
+  .bar .wrap{gap:6px}
+  .logo{font-size:17px}
+  .nav{gap:4px}
+  .nav button{font-size:13px;padding:7px 10px}
   .navfull{display:none}
   .navshort{display:inline}
+  .about{padding-left:20px;padding-right:20px}
   .hero{padding:34px 0 8px}
   .qopts{grid-template-columns:1fr 1fr}
   .planhead .ptop{flex-direction:column}
@@ -486,7 +487,7 @@ footer a{color:var(--ink-2);font-weight:600}
   </div>
 </main>
 
-<section id="view-about" class="hidden"><div class="wrap about" style="padding:42px 0">
+<section id="view-about" class="hidden"><div class="wrap about" style="padding-top:42px;padding-bottom:42px">
   <h2>About PrepSignals</h2>
   <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Answer three quick questions on the Your Plan tab, or pick a score range under Explore the Data to see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
   <h3>Where the data comes from</h3>
