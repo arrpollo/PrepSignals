@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""v.18.1 — PrepSignals, action-plan-first GMAT debrief intelligence.
+"""v.19 — PrepSignals, personalized-plan-first GMAT debrief intelligence.
 
-A bright, aspirational refinement of v.18. Presentation only: reads
-debriefs.json + post_details.json and writes a self-contained dashboard_v18_1.html.
+Phase 1 UX rebuild: presentation only. Reads debriefs.json + post_details.json
+and writes a self-contained dashboard_v19.html.
 
-What changed vs v18:
-  1. The first post-selection surface is a distilled action plan, not a list of
-     summaries to read.
-  2. Curated analytical depth comes back: distribution, section split, resources,
-     prep/gain snapshots, and a compact tactic heatmap.
-  3. Charts are still hand-built SVG/HTML, with taller stable chart containers and
-     balanced cards.
-  4. Debrief and band deep links remain unchanged (?d=<post_id>, ?band=<low>).
+What changed vs v18.1:
+  1. The landing view no longer pre-renders the full analytics dashboard. It
+     shows a single hero + a 3-question intake (current score / target band /
+     weeks to test), builds a personalized plan against a matched peer cohort
+     (debriefs that started near the user's level and reached their target),
+     and saves the answers to localStorage so a return visit skips the intake.
+  2. Two-mode nav: "Your plan" (personalized, default) and "Explore the data"
+     (the old v18.1 band-scoped dashboard, unchanged, for the analytically
+     curious). No login anywhere — personalization is 100% client-side.
+  3. Shareable plan links via ?p=<cur>-<tgt>-<wk>; old ?band= and ?d= deep
+     links keep working for the Explore tab and debrief overlay.
 
 The template uses plain `__TOKEN__` placeholders filled by str.replace(), so the
 CSS/JS can use normal single braces with no escaping.
@@ -49,7 +52,7 @@ def main():
     dates = [d["date"] for d in deb if d.get("date")]
     min_date, max_date = (min(dates), max(dates)) if dates else ("", "")
 
-    # Bands tuned to the real data (every debrief is 655-805, median ~705).
+    # Target bands, tuned to the real data (every debrief is 655-805, median ~705).
     bands = [
         {"key": "b1", "lo": 655, "hi": 695, "label": "655 – 695",
          "name": "Building toward 700", "blurb": "Solid scores, closing the last gap."},
@@ -61,9 +64,27 @@ def main():
     for b in bands:
         b["count"] = sum(1 for s in scores if b["lo"] <= s <= b["hi"])
 
+    # Current-score buckets, tuned to the real start_score data (375-715, median 595).
+    curb = [
+        {"key": "c1", "lo": 0, "hi": 604, "label": "Under 605", "name": "Early diagnostic or first mock"},
+        {"key": "c2", "lo": 605, "hi": 654, "label": "605 – 654", "name": "Warming up"},
+        {"key": "c3", "lo": 655, "hi": 694, "label": "655 – 694", "name": "Already close"},
+        {"key": "c4", "lo": 695, "hi": 9999, "label": "695+", "name": "Refining at the top"},
+    ]
+
+    # Weeks-until-test buckets, tuned to the real prep_weeks data (1-157, median 9).
+    weekb = [
+        {"key": "w1", "lo": 0, "hi": 3, "label": "Less than 4 weeks"},
+        {"key": "w2", "lo": 4, "hi": 7, "label": "4 – 7 weeks"},
+        {"key": "w3", "lo": 8, "hi": 12, "label": "8 – 12 weeks"},
+        {"key": "w4", "lo": 13, "hi": 9999, "label": "13+ weeks"},
+    ]
+
     deb_js = json.dumps(deb, ensure_ascii=False, separators=(",", ":"))
     details_js = json.dumps(details, ensure_ascii=False, separators=(",", ":"))
     bands_js = json.dumps(bands, ensure_ascii=False)
+    curb_js = json.dumps(curb, ensure_ascii=False)
+    weekb_js = json.dumps(weekb, ensure_ascii=False)
 
     tooltips = {
         "Maybe Promo": "Possible promotional signals (brand-endorsement framing, a vendor "
@@ -76,21 +97,23 @@ def main():
             .replace("__DEB__", deb_js)
             .replace("__DETAILS__", details_js)
             .replace("__BANDS__", bands_js)
+            .replace("__CURB__", curb_js)
+            .replace("__WEEKB__", weekb_js)
             .replace("__TOOLTIPS__", json.dumps(tooltips, ensure_ascii=False))
             .replace("__NDEB__", str(len(deb)))
             .replace("__MEDIAN__", str(int(st.median(scores))) if scores else "—")
             .replace("__MINDATE__", min_date).replace("__MAXDATE__", max_date))
-    (BASE / "dashboard_v18_1.html").write_text(html)
-    print(f"dashboard_v18_1.html written. {len(deb)} debriefs, {len(details)} detail pages.")
+    (BASE / "dashboard_v19.html").write_text(html)
+    print(f"dashboard_v19.html written. {len(deb)} debriefs, {len(details)} detail pages.")
     for b in bands:
-        print(f"  {b['label']}: {b['count']}")
+        print(f"  target {b['label']}: {b['count']}")
 
 
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>PrepSignals — your GMAT score plan from real debriefs</title>
-<meta name="description" content="Pick your target GMAT score and get a distilled prep plan from 330 real debriefs — section focus, practice loop, resources, and proof examples.">
+<title>PrepSignals — your personal GMAT score plan</title>
+<meta name="description" content="Answer three quick questions and get a personal GMAT prep plan matched to __NDEB__ real debriefs from people who started near you and reached your target.">
 <script>
 window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};
 window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
@@ -149,11 +172,49 @@ header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
 .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
   color:var(--primary-d);background:var(--primary-l);padding:6px 13px;border-radius:30px;margin-bottom:20px}
 .eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--green)}
-.hero h1{font-size:clamp(30px,6.4vw,52px);font-weight:800;margin:0 auto 16px;max-width:15ch}
-.hero p.lede{font-size:clamp(16px,2.4vw,19px);color:var(--ink-2);max-width:36ch;margin:0 auto 30px}
+.hero h1{font-size:clamp(30px,6.4vw,52px);font-weight:800;margin:0 auto 16px;max-width:17ch}
+.hero p.lede{font-size:clamp(16px,2.4vw,19px);color:var(--ink-2);max-width:42ch;margin:0 auto 8px}
 .hero p.lede b{color:var(--ink);font-weight:700}
 
-/* ---- band picker ---- */
+/* ---- quiz (3-question intake) ---- */
+.quiz{max-width:720px;margin:26px auto 0}
+.qgroup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px 20px 18px;box-shadow:var(--shadow);margin-bottom:14px;text-align:left}
+.qgroup .qtitle{font-size:16px;font-weight:800;display:flex;align-items:center;gap:9px}
+.qgroup .qn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--primary-l);color:var(--primary-d);font-size:12px;font-weight:800;flex:none}
+.qgroup .qsub{font-size:13px;color:var(--ink-2);margin:4px 0 14px;margin-left:31px}
+.qopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px}
+.qopt{background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;
+  padding:12px 13px;text-align:left;transition:.16s var(--ease)}
+.qopt:hover{border-color:var(--border-2)}
+.qopt.on{background:var(--primary-l);border-color:var(--primary)}
+.qopt .ol{font-size:14px;font-weight:800;color:var(--ink)}
+.qopt.on .ol{color:var(--primary-d)}
+.qopt .os{font-size:12px;color:var(--ink-2);margin-top:2px}
+.quizmatch{font-size:13.5px;color:var(--ink-2);text-align:center;margin:2px 0 16px}
+.quizmatch b{color:var(--primary-d)}
+.quizsubmit-wrap{text-align:center;margin-top:6px}
+.quizsubmit{font-size:16px;font-weight:800;color:#fff;background:var(--primary);padding:14px 26px;
+  border-radius:14px;transition:.18s var(--ease);display:inline-flex;align-items:center;gap:8px}
+.quizsubmit:not(:disabled):hover{background:var(--primary-d);transform:translateY(-1px)}
+.quizsubmit:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---- plan head ---- */
+.planhead{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;box-shadow:var(--shadow);margin-top:8px}
+.planhead .ptop{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.planhead h2{font-size:21px;font-weight:800}
+.planhead p{font-size:14px;color:var(--ink-2);margin-top:5px;max-width:60ch}
+.editlink{font-size:13px;font-weight:700;color:var(--primary-d);background:var(--primary-l);
+  border-radius:10px;padding:8px 12px;white-space:nowrap;flex:none}
+.pacecall{margin-top:16px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:14px;padding:13px 15px;font-size:13.5px;color:var(--ink-2)}
+.pacecall b{color:var(--ink)}
+.matchflag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+  color:var(--amber);background:var(--amber-l);border-radius:20px;padding:4px 10px;margin-top:10px}
+
+/* ---- band picker (explore tab) ---- */
 .bands{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 auto;max-width:760px}
 .band{position:relative;text-align:left;background:var(--surface);border:1.5px solid var(--border);
   border-radius:var(--radius);padding:18px 18px 16px;transition:.2s var(--ease);overflow:hidden}
@@ -186,20 +247,8 @@ section.block{padding:34px 0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;grid-auto-rows:1fr}
 .grid2>.panel{min-height:320px;height:100%;align-self:stretch;display:flex;flex-direction:column}
 .grid2>.panel .growfill{flex:1}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
-.blockh3{font-size:18px;font-weight:800;margin-bottom:3px}
-.blockh3 .hint{font-size:13px;font-weight:600;color:var(--ink-3);margin-left:8px}
 
 /* ---- action plan ---- */
-.focusbar{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface);
-  border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);margin:18px 0 0}
-.focusbar .flabel{font-size:14px;font-weight:800;color:var(--ink)}
-.focusbar .fsub{font-size:12.5px;font-weight:650;color:var(--ink-2);margin-top:1px}
-.focusopts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.focusopts button{font-size:13px;font-weight:800;color:var(--ink-2);background:var(--surface-2);
-  border:1px solid var(--border);border-radius:11px;padding:8px 11px;transition:.16s var(--ease)}
-.focusopts button:hover{border-color:var(--primary);color:var(--primary-d)}
-.focusopts button.on{background:var(--primary-l);border-color:var(--primary);color:var(--primary-d)}
 .actiongrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
 .actioncard{min-height:232px;text-align:left;background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;
@@ -218,14 +267,10 @@ section.block{padding:34px 0}
   font-size:13px;font-weight:800;transition:.16s var(--ease)}
 .actioncard .actbtn:hover{filter:saturate(1.1) brightness(.98)}
 
-/* ---- insight panels ---- */
-.insightgrid{display:grid;grid-template-columns:1.18fr .82fr;gap:16px;align-items:stretch}
-.insightstack{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* ---- insight panels (explore tab) ---- */
 .insightcard{min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .insightcard h3{font-size:17px;font-weight:800;margin-bottom:4px}
-.sample{font-size:12.5px;font-weight:700;color:var(--ink-3);margin-bottom:14px}
-.sample b{color:var(--ink-2)}
 .callout{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:13px 14px;
   color:var(--ink-2);font-size:13.5px;line-height:1.45;margin-top:auto}
 .callout b{color:var(--ink);font-weight:800}
@@ -243,24 +288,6 @@ section.block{padding:34px 0}
 .hmcell{justify-content:center;font-size:12.5px;font-weight:800;color:var(--ink);background:rgba(91,91,214,var(--a,.08));
   border:1px solid rgba(91,91,214,.08)}
 .hmcell button{width:100%;height:100%;border-radius:11px;font-weight:800;color:inherit}
-
-/* ---- section playbook (Quant / Verbal / Data Insights) ---- */
-.playbook{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.seccard{background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--seccol,var(--primary));
-  border-radius:var(--radius);padding:17px 18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
-.seccard .sh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:15px}
-.seccard .sn{font-size:16.5px;font-weight:800;color:var(--seccol,var(--primary));letter-spacing:-.01em}
-.seccard .sscore{font-size:12px;font-weight:700;color:var(--ink-2);background:var(--surface-2);
-  border:1px solid var(--border);border-radius:20px;padding:3px 11px;white-space:nowrap;flex:none}
-.seccard .sscore b{color:var(--seccol,var(--primary));font-weight:800;font-variant-numeric:tabular-nums}
-.seccard .bars{flex:1;gap:11px}
-.secempty{font-size:13px;color:var(--ink-3);line-height:1.5}
-.habits{margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:9px;background:var(--surface);
-  border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 16px;box-shadow:var(--shadow)}
-.habits .hk{font-size:13px;font-weight:800;color:var(--ink);flex:none}
-.habits .hchip{font-size:12.5px;font-weight:600;color:var(--ink);background:var(--primary-l);
-  border-radius:20px;padding:4px 11px;display:inline-flex;gap:6px;align-items:center}
-.habits .hchip b{color:var(--primary-d);font-weight:800;font-variant-numeric:tabular-nums}
 
 /* ---- stat chips ---- */
 .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
@@ -282,11 +309,6 @@ section.block{padding:34px 0}
 .barfill{height:100%;width:0;border-radius:8px;background:var(--primary);
   transition:width 1s var(--ease)}
 .grown .barfill{width:var(--w)}
-.sectag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex:none}
-.sec-Q{background:var(--blue-l);color:var(--blue)} .fill-Q{background:var(--blue)}
-.sec-V{background:var(--violet-l);color:var(--violet)} .fill-V{background:var(--violet)}
-.sec-DI{background:var(--amber-l);color:var(--amber)} .fill-DI{background:var(--amber)}
-.sec-G{background:var(--primary-l);color:var(--primary-d)} .fill-G{background:var(--primary)}
 
 /* ---- score distribution ---- */
 .dist{height:370px;min-height:370px;width:100%;position:relative;margin-top:6px}
@@ -428,27 +450,23 @@ footer a{color:var(--ink-2);font-weight:600}
 @media(max-width:760px){
   .wrap{padding:0 16px}
   .hero{padding:34px 0 8px}
+  .qopts{grid-template-columns:1fr 1fr}
+  .planhead .ptop{flex-direction:column}
   .bands{grid-template-columns:1fr;gap:11px;max-width:440px}
   .band{padding:16px 17px}
   .band .bblurb{min-height:0}
   .band .barrow{opacity:1;transform:none}
-  .focusbar{align-items:flex-start;flex-direction:column;padding:13px 14px;gap:10px}
-  .focusopts{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:7px}
-  .focusopts button{padding:9px 8px}
   .actiongrid{grid-template-columns:1fr;gap:12px}
   .actioncard{min-height:0}
   .statrow{grid-template-columns:1fr 1fr;gap:10px}
   .grid2{grid-template-columns:1fr}
   .grid2>.panel{min-height:0;height:auto}
-  .grid3,.insightgrid,.insightstack{grid-template-columns:1fr}
-  .playbook{grid-template-columns:1fr;gap:12px}
   .cards,#browseList{grid-template-columns:1fr}
   .dist{height:310px;min-height:310px}
   .heatmap{grid-template-columns:minmax(104px,1.1fr) repeat(3,1fr);gap:5px}
   .hmhead,.hmcell,.hmlabel{min-height:38px}
   .hmhead{font-size:10px}
   .hmlabel,.hmcell{font-size:11px}
-  .habits{padding:12px 14px}
   section.block{padding:26px 0}
   .panel{padding:18px}
   .dhero .big{font-size:40px}
@@ -463,12 +481,25 @@ footer a{color:var(--ink-2);font-weight:600}
 <header class="bar"><div class="wrap">
   <a class="logo" href="?" onclick="goHome(event)">Prep<b>Signals</b><span class="dot"></span></a>
   <nav class="nav">
-    <button id="nav-home" class="on" onclick="showView('home')">Debriefs</button>
+    <button id="nav-plan" class="on" onclick="showView('plan')">Your plan</button>
+    <button id="nav-explore" onclick="showView('explore')">Explore the data</button>
     <button id="nav-about" onclick="showView('about')">About</button>
   </nav>
 </div></header>
 
-<main id="view-home">
+<main id="view-plan">
+  <div class="wrap">
+    <section class="hero">
+      <span class="eyebrow"><span class="pulse"></span>__NDEB__ real GMAT debriefs</span>
+      <h1>Get your plan from people who hit your score</h1>
+      <p class="lede">Answer three quick questions. We match you to debriefs from people who started near your level and reached your target.</p>
+    </section>
+    <div class="quiz" id="quiz"></div>
+    <div id="planResult"></div>
+  </div>
+</main>
+
+<main id="view-explore" class="hidden">
   <div class="wrap">
     <section class="hero">
       <span class="eyebrow"><span class="pulse"></span>__NDEB__ real GMAT debriefs</span>
@@ -487,7 +518,6 @@ footer a{color:var(--ink-2);font-weight:600}
         </div>
       </div>
       <div class="statrow" id="statrow"></div>
-      <div class="focusbar" id="focusPicker"></div>
       <div class="actiongrid" id="actionPlan"></div>
     </section>
 
@@ -561,13 +591,13 @@ footer a{color:var(--ink-2);font-weight:600}
 
 <section id="view-about" class="hidden"><div class="wrap about" style="padding:42px 0">
   <h2>About PrepSignals</h2>
-  <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Pick a score range and you'll see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
+  <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Answer three quick questions on the Your Plan tab, or pick a score range under Explore the Data to see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
   <h3>Where the data comes from</h3>
   <p>Every debrief links back to its original public post on Reddit's r/GMAT and GMAT Club. We only summarise — the source is always one tap away so you can read it in full and judge for yourself.</p>
   <h3>Independence</h3>
   <p>PrepSignals is independent and isn't affiliated with GMAC, any prep company, or any course. Resources are named because the original posters named them, not because anyone paid to appear. Debriefs that read like promotions are flagged "Maybe Promo" so you can weigh them.</p>
   <h3>Privacy</h3>
-  <p>No accounts, no tracking cookies, no backend. The page is static. We use Vercel's privacy-friendly aggregate analytics to see which ranges and stories are useful — nothing that identifies you.</p>
+  <p>No accounts, no login, no backend. Your three answers on the Your Plan tab are saved only in your own browser's local storage so a return visit skips the questions — nothing is sent to a server, and nothing identifies you. We use Vercel's privacy-friendly aggregate analytics to see which plans and stories are useful.</p>
   <h3>Feedback</h3>
   <p>If you want to see more features, notice something wrong, or have feedback, please email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
   <p>If you are the author of a post represented in this project and want it removed or corrected, contact <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
@@ -603,17 +633,24 @@ footer a{color:var(--ink-2);font-weight:600}
 </div></footer>
 
 <script>
-const DEB=__DEB__, DETAILS=__DETAILS__, BANDS=__BANDS__, TT=__TOOLTIPS__;
+const DEB=__DEB__, DETAILS=__DETAILS__, BANDS=__BANDS__, CURB=__CURB__, WEEKB=__WEEKB__, TT=__TOOLTIPS__;
 const RM=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const BANDC={b1:{c:'var(--blue)',d:'var(--blue)',l:'var(--blue-l)'},
             b2:{c:'var(--primary)',d:'var(--primary-d)',l:'var(--primary-l)'},
             b3:{c:'var(--violet)',d:'var(--violet)',l:'var(--violet-l)'}};
+const MIN_PEERS=6;
+const LS_KEY='ps_plan_v1';
 let state={band:'b2',focus:'auto'};
+let plan={cur:null,tgt:null,wk:null};
+let showIntakeForm=true;
+let exploreInit=false;
 
 function track(name,props){try{if(typeof window.va==='function')window.va('event',{name,data:props||{}});}catch(e){}}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function inBand(d,b){return d.total!=null&&d.total>=b.lo&&d.total<=b.hi;}
 function bandOf(key){return BANDS.find(b=>b.key===key);}
+function curBucketOf(key){return CURB.find(c=>c.key===key);}
+function wkBucketOf(key){return WEEKB.find(w=>w.key===key);}
 function debsIn(b){return DEB.filter(d=>inBand(d,b));}
 function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function pct(n,d){return d?Math.round(100*n/d):0;}
@@ -668,7 +705,176 @@ function parseStrat(s){const i=s.indexOf(':');if(i<0)return{sec:'G',label:s};
   return{sec,label};}
 const SECNAME={Q:'Quant',V:'Verbal',DI:'Data',G:'General'};
 
-/* ---------- band picker ---------- */
+/* ================= YOUR PLAN (personalized) ================= */
+function loadPlanLS(){
+  try{const raw=localStorage.getItem(LS_KEY);if(!raw)return null;
+    const o=JSON.parse(raw);
+    if(o&&CURB.find(c=>c.key===o.cur)&&BANDS.find(b=>b.key===o.tgt)&&WEEKB.find(w=>w.key===o.wk))return o;
+  }catch(e){}
+  return null;
+}
+function savePlanLS(){try{localStorage.setItem(LS_KEY,JSON.stringify({cur:plan.cur,tgt:plan.tgt,wk:plan.wk}));}catch(e){}}
+
+function peersFor(tgtKey,curKey){
+  const b=bandOf(tgtKey),rows=debsIn(b),cur=curBucketOf(curKey);
+  let peers=cur?rows.filter(d=>d.start!=null&&d.start>=cur.lo&&d.start<=cur.hi):[];
+  const matched=peers.length>=MIN_PEERS;
+  if(!matched)peers=rows;
+  return{rows,peers,matched};
+}
+function paceNote(peers,wk){
+  const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null);
+  if(!prep.length)return null;
+  const med=median(prep);
+  if(wk.hi<med*0.7)return `Your timeline (<b>${esc(wk.label)}</b>) is tighter than the median <b>${fmt(med)}w</b> prep in this cohort — lean on official mocks and the resource stack below rather than broad review.`;
+  if(wk.lo>med*1.5)return `You have more runway than the median <b>${fmt(med)}w</b> prep in this cohort — a good case for deeper section-by-section work instead of a sprint.`;
+  return `Your timeline lines up with the median <b>${fmt(med)}w</b> prep reported in this cohort.`;
+}
+
+function pickPlan(field,key){plan[field]=key;renderQuiz();}
+function renderQuiz(){
+  const el=document.getElementById('quiz');
+  const match=(plan.tgt&&plan.cur)?peersFor(plan.tgt,plan.cur):null;
+  el.innerHTML=`
+    <div class="qgroup">
+      <div class="qtitle"><span class="qn">1</span> Where are you scoring now?</div>
+      <div class="qsub">Your most recent practice test or diagnostic total.</div>
+      <div class="qopts">${CURB.map(c=>`<button type="button" class="qopt ${plan.cur===c.key?'on':''}" onclick="pickPlan('cur','${c.key}')"><div class="ol">${esc(c.label)}</div><div class="os">${esc(c.name||'')}</div></button>`).join('')}</div>
+    </div>
+    <div class="qgroup">
+      <div class="qtitle"><span class="qn">2</span> What score are you aiming for?</div>
+      <div class="qsub">Pick the band you are targeting.</div>
+      <div class="qopts">${BANDS.map(b=>`<button type="button" class="qopt ${plan.tgt===b.key?'on':''}" onclick="pickPlan('tgt','${b.key}')"><div class="ol">${esc(b.label)}</div><div class="os">${esc(b.name)}</div></button>`).join('')}</div>
+    </div>
+    <div class="qgroup">
+      <div class="qtitle"><span class="qn">3</span> How long until test day?</div>
+      <div class="qsub">Roughly — this only shapes pacing advice, not the target.</div>
+      <div class="qopts">${WEEKB.map(w=>`<button type="button" class="qopt ${plan.wk===w.key?'on':''}" onclick="pickPlan('wk','${w.key}')"><div class="ol">${esc(w.label)}</div></button>`).join('')}</div>
+    </div>
+    ${match?`<div class="quizmatch">${match.matched?`<b>${match.peers.length}</b> debriefs closely match this so far.`:`Not many exact matches yet — we will use the full ${esc(bandOf(plan.tgt).label)} band (<b>${match.rows.length}</b> debriefs) instead.`}</div>`:''}
+    <div class="quizsubmit-wrap">
+      <button type="button" class="quizsubmit" id="quizSubmit" ${(plan.cur&&plan.tgt&&plan.wk)?'':'disabled'} onclick="submitPlan()">Build my plan
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>`;
+}
+function submitPlan(){
+  if(!(plan.cur&&plan.tgt&&plan.wk))return;
+  savePlanLS();showIntakeForm=false;
+  history.replaceState({},'', '?p='+plan.cur+'-'+plan.tgt+'-'+plan.wk);
+  track('intake_submit',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk});
+  renderPlanView();
+  scrollTo({top:0,behavior:RM?'auto':'smooth'});
+}
+function editPlan(){showIntakeForm=true;track('intake_edit',{});renderPlanView();}
+
+function renderPlanView(){
+  const q=document.getElementById('quiz'),r=document.getElementById('planResult');
+  if(!plan.cur||!plan.tgt||!plan.wk||showIntakeForm){
+    q.classList.remove('hidden');renderQuiz();r.innerHTML='';
+  }else{
+    q.classList.add('hidden');renderPlanResult();
+  }
+}
+function renderPlanResult(){
+  const{rows,peers,matched}=peersFor(plan.tgt,plan.cur);
+  const b=bandOf(plan.tgt),cur=curBucketOf(plan.cur),wk=wkBucketOf(plan.wk);
+  const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null),gains=peers.map(d=>d.gain).filter(x=>x!=null);
+  const pace=paceNote(peers,wk);
+  const stats=[
+    {v:peers.length,l:matched?'closest matches':'band-wide sample',cls:''},
+    {v:gains.length?'+'+fmt(median(gains)):'—',l:'median score gain',cls:'coral'},
+    {v:prep.length?fmt(median(prep))+'w':'—',l:'median prep time',cls:''},
+    {v:rows.length,l:`total in ${b.label}`,cls:'green'},
+  ];
+  document.getElementById('planResult').innerHTML=`
+    <div class="planhead">
+      <div class="ptop">
+        <div><h2>Your plan: ${esc(cur.label)} &rarr; ${esc(b.label)}</h2>
+          <p>Built from ${matched?`<b>${peers.length}</b> debriefs that started around your level and reached ${esc(b.label)}`:`the full ${esc(b.label)} band — not enough close starting-score matches yet, so this is band-wide`}. Timeline: ${esc(wk.label)}.</p>
+          ${!matched?`<span class="matchflag">Band-wide data — few exact starting-score matches</span>`:''}
+        </div>
+        <button class="editlink" type="button" onclick="editPlan()">Change my answers</button>
+      </div>
+      <div class="statrow" style="margin-top:18px">${stats.map(s=>`<div class="stat ${s.cls}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')}</div>
+      ${pace?`<div class="pacecall">${pace}</div>`:''}
+    </div>
+    <div class="actiongrid" id="planActions" style="margin-top:18px"></div>
+    <section class="block" id="planEvidence">
+      <div class="shead"><div><h2>Proof behind your plan</h2><p class="sub">Real debriefs closest to your situation.</p></div></div>
+      <div class="cards" id="planCards"></div>
+      <button class="morebtn" onclick="showView('explore')">See full analytics for ${esc(b.label)} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </section>`;
+  renderPlanActions(peers,b);
+  document.getElementById('planCards').innerHTML=bestExamples(peers,6).map(debCardHTML).join('');
+  track('plan_view',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,matched,sample:peers.length});
+}
+function renderPlanActions(peers,b){
+  const weak=weakestSection(peers),secKey=weak?weak.key:'di';
+  const secTop=topStrats(peers,sectionCode(secKey),1)[0];
+  const genTop=topStrats(peers,'G',3);
+  const resTop=topResources(peers,3);
+  const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null),gains=peers.map(d=>d.gain).filter(x=>x!=null);
+  const proof=bestExamples(peers,6);
+  const cards=[
+    {k:'Section focus',c:'var(--blue)',l:'var(--blue-l)',
+      h:weak?`Start with ${weak.name}`:'Start section by section',
+      p:weak?`${weak.name} is the lowest median split among debriefs like yours. Typical score here is ${weak.score}.`:'Not enough full section splits in this cohort — separate Quant, Verbal, and DI practice from the start.',
+      m:secTop?`<b>${pct(secTop[1],peers.length)}%</b> mention ${esc(secTop[0])}`:`<b>${peers.length}</b> examples`,
+      a:'See section examples',kind:'section'},
+    {k:'Practice loop',c:'var(--primary)',l:'var(--primary-l)',
+      h:genTop[0]?esc(genTop[0][0]):'Build a review loop',
+      p:'The repeated pattern is not just doing more questions. People describe a loop of mocks, review, targeted drills, and test-day execution.',
+      m:genTop[0]?`<b>${pct(genTop[0][1],peers.length)}%</b> name this habit`:`<b>${peers.length}</b> debriefs sampled`,
+      a:'Open habit examples',kind:'habit'},
+    {k:'Resource stack',c:'var(--amber)',l:'var(--amber-l)',
+      h:resTop[0]?esc(resTop[0][0]):'Use named materials deliberately',
+      p:'Resources are popularity signals, not proof of causality. The useful move is seeing how students combined official material, practice banks, and review.',
+      m:resTop[0]?`<b>${pct(resTop[0][1],peers.length)}%</b> mention the top resource`:`<b>0</b> named resources`,
+      a:'See resource examples',kind:'resource'},
+    {k:'Proof examples',c:'var(--green)',l:'var(--green-l)',
+      h:'Read the closest stories first',
+      p:'These are the debriefs nearest to your starting point and target. Copy the process details rather than the exact product stack.',
+      m:prep.length||gains.length?`<b>${prep.length}</b> prep-time / <b>${gains.length}</b> gain samples`:`<b>${proof.length}</b> detailed stories`,
+      a:'Jump to proof',kind:'proof'},
+  ];
+  document.getElementById('planActions').innerHTML=cards.map(x=>`
+    <div class="actioncard" style="--ac:${x.c};--acl:${x.l}">
+      <span class="k">${x.k}</span>
+      <h3>${x.h}</h3>
+      <p>${x.p}</p>
+      <div class="metric">${x.m}</div>
+      <button class="actbtn" type="button" onclick="handlePlanAction('${x.kind}')">${x.a}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>`).join('');
+}
+function handlePlanAction(kind){
+  const{peers}=peersFor(plan.tgt,plan.cur),b=bandOf(plan.tgt);
+  track('plan_action_click',{kind,band:b.label});
+  if(kind==='proof'){jumpPlanEvidence();return;}
+  if(kind==='section'){
+    const weak=weakestSection(peers),key=weak?weak.key:'di';
+    const pool=rowsForSection(peers,key);
+    openCohort(`${sectionLabel(key)} examples`,`${pool.length} debriefs like yours with ${sectionLabel(key)} scores, tactics, or notes.`,bestExamples(pool,12),{kind:'section',band:b.label,section:sectionLabel(key),sample:pool.length});
+    return;
+  }
+  if(kind==='habit'){
+    const top=topStrats(peers,'G',1)[0];
+    const pool=top?rowsForStrat(peers,'G',top[0]):peers;
+    openCohort(top?`${top[0]} examples`:'Practice-loop examples',`Examples from debriefs like yours that mention this habit.`,bestExamples(pool,12),{kind:'habit',band:b.label,tactic:top&&top[0],sample:pool.length});
+    return;
+  }
+  if(kind==='resource'){
+    const top=topResources(peers,1)[0];
+    const pool=top?peers.filter(d=>(d.resources||[]).includes(top[0])):peers;
+    openCohort(top?`${top[0]} examples`:'Resource examples',`Posts like yours that named this resource. Usage context, not an effectiveness ranking.`,bestExamples(pool,12),{kind:'resource',band:b.label,resource:top&&top[0],sample:pool.length});
+  }
+}
+function jumpPlanEvidence(){const t=document.getElementById('planEvidence');
+  scrollTo({top:t.getBoundingClientRect().top+scrollY-70,behavior:RM?'auto':'smooth'});}
+
+/* ================= EXPLORE THE DATA (band-scoped, general) ================= */
 function renderBands(){
   document.getElementById('bands').innerHTML=BANDS.map(b=>{
     const c=BANDC[b.key];
@@ -686,19 +892,11 @@ function pickBand(key,scroll){
   document.querySelectorAll('.band').forEach(el=>el.classList.toggle('on',el.dataset.k===key));
   const b=bandOf(key);
   history.replaceState({band:key},'', '?band='+b.lo);
-  renderResults(); renderPatterns();
+  renderResults();renderPatterns();
   track('band_select',{band:b.label});
   if(scroll){const t=document.getElementById('results');
     const y=t.getBoundingClientRect().top+scrollY-70;
     scrollTo({top:y,behavior:RM?'auto':'smooth'});}
-}
-
-/* ---------- results ---------- */
-function countUp(el,to,suffix){
-  if(RM||to<1){el.textContent=(to||0)+(suffix||'');return;}
-  const dur=750,t0=performance.now();
-  (function step(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
-    el.textContent=Math.round(to*e)+(suffix||'');if(p<1)requestAnimationFrame(step);})(t0);
 }
 function renderResults(){
   const b=bandOf(state.band),rows=debsIn(b);
@@ -719,40 +917,20 @@ function renderResults(){
   document.getElementById('statrow').innerHTML=stats.map(s=>
     `<div class="stat ${s.cls}"><div class="v">${s.v==null?'—':s.v}</div><div class="l">${s.l}</div></div>`).join('');
 
-  renderFocusPicker(rows,b);
   renderActionPlan(rows,b);
   renderRecoCards(rows,b);
   observeGrow();
 }
-function renderFocusPicker(rows,b){
-  const weak=weakestSection(rows),auto=weak?`Auto: ${weak.name}`:'Auto';
-  const opts=[['auto',auto],['q','Quant'],['v','Verbal'],['di','Data Insights']];
-  document.getElementById('focusPicker').innerHTML=`
-    <div><div class="flabel">What do you want to improve?</div>
-      <div class="fsub">Choose a section and the plan/examples below will pivot to it.</div></div>
-    <div class="focusopts">${opts.map(([k,l])=>`<button type="button" class="${state.focus===k?'on':''}" onclick="pickFocus('${k}')">${l}</button>`).join('')}</div>`;
-}
-function pickFocus(focus){
-  state.focus=focus;
-  const b=bandOf(state.band),rows=debsIn(b);
-  renderFocusPicker(rows,b);
-  renderActionPlan(rows,b);
-  track('focus_select',{focus,band:b.label});
-}
 function renderActionPlan(rows,b){
-  const weak=weakestSection(rows),secKey=activeFocusKey(rows),secCode=sectionCode(secKey);
-  const secMed=sectionMedians(rows)[secKey],secTop=topStrats(rows,secCode,1)[0];
-  const focusManual=state.focus!=='auto';
+  const weak=weakestSection(rows),secKey=activeFocusKey(rows),secMed=sectionMedians(rows)[secKey],secTop=topStrats(rows,sectionCode(secKey),1)[0];
   const genTop=topStrats(rows,'G',3);
   const resTop=topResources(rows,3);
   const proof=bestExamples(rows,6);
   const prep=rows.map(d=>d.prep_weeks).filter(x=>x!=null),gains=rows.map(d=>d.gain).filter(x=>x!=null);
   const cards=[
     {k:'Section focus',c:'var(--blue)',l:'var(--blue-l)',
-      h:focusManual?`Improve ${sectionLabel(secKey)}`:(weak?`Start with ${weak.name}`:'Start section by section'),
-      p:focusManual
-        ?`${sectionLabel(secKey)} is your selected focus. In this band, the typical ${sectionShort(secKey)} score is ${secMed!=null?Math.round(secMed):'not fully reported'}, so use the examples to find section-specific moves.`
-        :(weak?`${weak.name} is the lowest median split in this band (${sectionShort(secKey)}${weak.score}). Treat that as the first diagnostic checkpoint, not a verdict.`:'Not enough full section splits here, so start by separating Quant, Verbal, and DI practice.'),
+      h:weak?`Start with ${weak.name}`:'Start section by section',
+      p:weak?`${weak.name} is the lowest median split in this band (${sectionShort(secKey)}${weak.score}). Treat that as the first diagnostic checkpoint, not a verdict.`:'Not enough full section splits here, so start by separating Quant, Verbal, and DI practice.',
       m:secTop?`<b>${pct(secTop[1],rows.length)}%</b> mention ${esc(secTop[0])}`:`<b>${rows.length}</b> examples in range`,
       a:'See section examples',kind:'section'},
     {k:'Practice loop',c:'var(--primary)',l:'var(--primary-l)',
@@ -805,7 +983,6 @@ function handleAction(kind){
   }
 }
 function debCardHTML(d){
-  const det=DETAILS[d.id]||{};
   const top=(d.strat||[]).slice(0,3).map(s=>{const{sec,label}=parseStrat(s);
     const cm={Q:'var(--blue)',V:'var(--violet)',DI:'var(--amber)',G:'var(--primary)'};
     return `<span class="minichip"><span class="d" style="background:${cm[sec]}"></span>${esc(label)}</span>`;}).join('');
@@ -823,37 +1000,9 @@ function debCardHTML(d){
   </button>`;
 }
 function renderRecoCards(rows,b){
-  /* prefer the richest stories: most tactics + has detail notes + most replies */
   const scored=bestExamples(rows,6);
   document.getElementById('cardSub').textContent=`Six detailed ${b.label} stories selected for tactics, section notes, replies, prep/gain context, and named resources. Optional reading when you want proof behind the plan.`;
   document.getElementById('recoCards').innerHTML=scored.map(debCardHTML).join('');
-}
-
-/* ---------- section playbook (Quant / Verbal / Data Insights) ---------- */
-const PLAYSEC=[['Q','Quant','q'],['V','Verbal','v'],['DI','Data Insights','di']];
-const SECCOL={Q:'var(--blue)',V:'var(--violet)',DI:'var(--amber)'};
-function renderPlaybook(rows,b){
-  const contrib=rows.filter(d=>(d.strat||[]).length),denom=contrib.length||rows.length;
-  document.getElementById('playSub').innerHTML=contrib.length
-    ?`Quant, Verbal and Data Insights reward different things. Among the <b>${contrib.length}</b> ${b.label} debriefs that spelled out their approach, here's each section's playbook — and the score people typically posted in it.`
-    :`Quant, Verbal and Data Insights reward different things — open the stories below for section-by-section detail.`;
-  document.getElementById('playbook').innerHTML=PLAYSEC.map(([S,name,k])=>{
-    const sc=rows.map(d=>d[k]).filter(x=>x!=null),typ=sc.length?Math.round(median(sc)):null;
-    const cnt={};contrib.forEach(d=>(d.strat||[]).forEach(s=>{const p=parseStrat(s);if(p.sec===S)cnt[p.label]=(cnt[p.label]||0)+1;}));
-    const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5),maxc=top.length?top[0][1]:1;
-    const body=top.length
-      ?`<div class="bars">${top.map(([label,n])=>{const pct=Math.round(100*n/denom);
-        return `<div class="barrow"><div class="blabel"><span class="bname"><span class="txt">${esc(label)}</span></span><span class="bpct">${pct}%</span></div>
-        <div class="bartrack"><div class="barfill" style="--w:${Math.round(100*n/maxc)}%;background:${SECCOL[S]}"></div></div></div>`;}).join('')}</div>`
-      :`<p class="secempty">No commonly-named ${name} tactics in this range yet — the stories below still cover it.</p>`;
-    return `<div class="seccard" style="--seccol:${SECCOL[S]}">
-      <div class="sh"><span class="sn">${name}</span>${typ!=null?`<span class="sscore">Typical&nbsp;<b>${typ}</b></span>`:''}</div>
-      ${body}</div>`;}).join('');
-  /* habits that cut across all three (General tactics) */
-  const g={};contrib.forEach(d=>(d.strat||[]).forEach(s=>{const p=parseStrat(s);if(p.sec==='G')g[p.label]=(g[p.label]||0)+1;}));
-  const gt=Object.entries(g).sort((a,b)=>b[1]-a[1]).slice(0,5),hb=document.getElementById('habits');
-  hb.innerHTML=gt.length?`<span class="hk">Across all sections</span>`+gt.map(([l,n])=>`<span class="hchip">${esc(l)} <b>${Math.round(100*n/denom)}%</b></span>`).join(''):'';
-  hb.style.display=gt.length?'':'none';
 }
 
 /* ---------- patterns ---------- */
@@ -880,7 +1029,6 @@ function renderPatterns(){
   document.getElementById('distSub').textContent=`All __NDEB__ debriefs by official total score. The busiest score is ${mode}; your selected band is highlighted.`;
   document.getElementById('distKey').textContent=`Your range, ${b.label}`;
 
-  /* typical section split (median Q/V/DI for this band) */
   const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
   const slo=55,shi=90,sscale=v=>Math.max(2,Math.min(100,Math.round(100*(v-slo)/(shi-slo))));
   const complete=rows.filter(d=>d.q!=null&&d.v!=null&&d.di!=null);
@@ -896,7 +1044,6 @@ function renderPatterns(){
     ?`<b>${weak.name}</b> is the lowest median split in this range. Use that as a diagnostic prompt, then compare against the examples.`
     :`Not enough complete section splits to name a bottleneck confidently.`;
 
-  /* resources */
   const top=topResources(rows,4),mx=top.length?top[0][1]:1;
   document.getElementById('resSub2').innerHTML=`Most-named resources among <b>${rows.length}</b> ${b.label} scorers. Popularity only, not proof of effectiveness.`;
   document.getElementById('resBars').innerHTML=top.map(([r,n])=>{const pct=Math.round(100*n/rows.length);
@@ -905,7 +1052,6 @@ function renderPatterns(){
   const rb=document.getElementById('resExamples');
   rb.onclick=()=>{track('insight_open',{kind:'resource',band:b.label});handleAction('resource');};
 
-  /* prep and gain snapshots */
   const prep=rows.map(d=>d.prep_weeks).filter(x=>x!=null),gains=rows.map(d=>d.gain).filter(x=>x!=null);
   const attempts=rows.map(d=>d.attempts).filter(x=>x!=null),self=rows.filter(d=>(d.tags||[]).includes('Self Study')).length;
   document.getElementById('prepSub').innerHTML=`Only some debriefs report prep length or start score, so this panel is context rather than a target.`;
@@ -917,7 +1063,6 @@ function renderPatterns(){
   ].map(([l,n,s])=>`<div class="ministat"><div class="n">${n}</div><div class="l">${l}<br><span style="color:var(--ink-3);font-weight:650">n=${s}</span></div></div>`).join('');
   document.getElementById('prepCall').innerHTML=`Use these as planning bounds: <b>${prep.length}</b> posts state prep time and <b>${gains.length}</b> state a start-to-official score gain.`;
 
-  /* compact tactic heatmap */
   const candidates=[
     ...topStrats(rows,'Q',2).map(x=>({sec:'Q',label:x[0]})),
     ...topStrats(rows,'V',2).map(x=>({sec:'V',label:x[0]})),
@@ -986,7 +1131,6 @@ function openHeatCohort(sec,label,bandKey){
 function sectionCompare(d){
   const b=BANDS.find(x=>inBand(d,x))||bandOf(state.band),peers=debsIn(b);
   const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
-  /* scale 55-90 so real differences (most section scores sit 75-90) are visible */
   const lo=55,hi=90,scale=v=>Math.max(2,Math.min(100,Math.round(100*(v-lo)/(hi-lo))));
   const secs=[['q','Quant'],['v','Verbal'],['di','Data Insights']];
   let anyTyp=false;
@@ -1082,17 +1226,25 @@ function doClose(){
 }
 
 /* ---------- views + routing ---------- */
+function initExplore(){
+  if(exploreInit)return;exploreInit=true;
+  renderBands();initFilters();renderResults();renderPatterns();renderBrowse();observeGrow();
+}
 function showView(v){
-  document.getElementById('view-home').classList.toggle('hidden',v!=='home');
+  document.getElementById('view-plan').classList.toggle('hidden',v!=='plan');
+  document.getElementById('view-explore').classList.toggle('hidden',v!=='explore');
   document.getElementById('view-about').classList.toggle('hidden',v!=='about');
-  document.getElementById('nav-home').classList.toggle('on',v==='home');
+  document.getElementById('nav-plan').classList.toggle('on',v==='plan');
+  document.getElementById('nav-explore').classList.toggle('on',v==='explore');
   document.getElementById('nav-about').classList.toggle('on',v==='about');
+  if(v==='explore')initExplore();
+  if(v==='plan')renderPlanView();
   if(v==='about')track('about_open',{});
   scrollTo(0,0);
 }
 function goHome(e){if(e)e.preventDefault();if(document.getElementById('detail').classList.contains('on'))doClose();
   if(document.getElementById('cohort').classList.contains('on'))closeCohort();
-  history.pushState({},'', '?');showView('home');scrollTo(0,0);}
+  history.pushState({},'', '?');showView('plan');scrollTo(0,0);}
 function jumpBrowse(){const t=document.getElementById('browse');
   scrollTo({top:t.getBoundingClientRect().top+scrollY-70,behavior:RM?'auto':'smooth'});}
 function jumpEvidence(){const t=document.getElementById('evidence');
@@ -1103,7 +1255,8 @@ window.addEventListener('popstate',e=>{
   if(s.d){openDebrief(s.d,false);}
   else{doClose();
     const p=new URLSearchParams(location.search);
-    if(p.get('band')){const b=BANDS.find(x=>String(x.lo)===p.get('band'));if(b&&b.key!==state.band){state.band=b.key;renderBands();renderResults();renderPatterns();}}
+    if(p.get('band')){const b=BANDS.find(x=>String(x.lo)===p.get('band'));if(b){state.band=b.key;showView('explore');}}
+    else if(!p.get('p')){showView('plan');}
   }
 });
 document.addEventListener('keydown',e=>{
@@ -1131,9 +1284,22 @@ function initFilters(){
 }
 (function init(){
   const p=new URLSearchParams(location.search);
-  if(p.get('band')){const b=BANDS.find(x=>String(x.lo)===p.get('band'));if(b)state.band=b.key;}
-  renderBands();initFilters();renderResults();renderPatterns();renderBrowse();
-  observeGrow();
+  let startView='plan';
+  const pp=p.get('p');
+  if(pp){
+    const parts=pp.split('-');
+    if(parts.length===3&&CURB.find(c=>c.key===parts[0])&&BANDS.find(b=>b.key===parts[1])&&WEEKB.find(w=>w.key===parts[2])){
+      plan={cur:parts[0],tgt:parts[1],wk:parts[2]};showIntakeForm=false;savePlanLS();
+    }
+  }else{
+    const saved=loadPlanLS();
+    if(saved){plan=saved;showIntakeForm=false;}
+  }
+  if(p.get('band')){
+    const b=BANDS.find(x=>String(x.lo)===p.get('band'));
+    if(b){state.band=b.key;startView='explore';}
+  }
+  showView(startView);
   const did=p.get('d');
   if(did&&DEB.find(x=>x.id===did)){openDebrief(did,false);history.replaceState({d:did},'', '?d='+did);}
 })();
