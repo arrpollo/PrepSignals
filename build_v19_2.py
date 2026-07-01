@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
-"""v.19 — PrepSignals, personalized-plan-first GMAT debrief intelligence.
+"""v.19.2 — PrepSignals, personalized plan + full data-insights charts.
 
-Phase 1 UX rebuild: presentation only. Reads debriefs.json + post_details.json
-and writes a self-contained dashboard_v19.html.
+Reads debriefs.json + post_details.json and writes a self-contained
+dashboard_v19_2.html. Charts are hand-rolled SVG/CSS (no chart library),
+themed to the v.19 design system, and all aggregation happens in-browser.
 
-What changed vs v18.1:
-  1. The landing view no longer pre-renders the full analytics dashboard. It
-     shows a single hero + a 3-question intake (current score / target band /
-     weeks to test), builds a personalized plan against a matched peer cohort
-     (debriefs that started near the user's level and reached their target),
-     and saves the answers to localStorage so a return visit skips the intake.
-  2. Two-mode nav: "Your plan" (personalized, default) and "Explore the data"
-     (the old v18.1 band-scoped dashboard, unchanged, for the analytically
-     curious). No login anywhere — personalization is 100% client-side.
-  3. Shareable plan links via ?p=<cur>-<tgt>-<wk>; old ?band= and ?d= deep
-     links keep working for the Explore tab and debrief overlay.
+What changed vs v19.1:
+  1. FUSION — the band-scoped analytics that used to live on the Explore tab
+     now fold into the personalized "Your Plan" tab. After the 3-question
+     intake the plan page shows, keyed to the user's target band and matched
+     peer cohort: a "score-band insights" panel that frames the jump from the
+     current-score bucket to the target band, plus the deep-dive analytics
+     (score distribution, section split, resources, prep/gain, tactic heatmap,
+     section insights). One personalized surface instead of two tabs.
+  2. NEW "Explore the Data" tab — brings back the depth of the old v.16
+     dashboard as a GLOBAL, filterable analytics view over every debrief:
+     score distribution, section medians by band (grouped bars), point-gain
+     distribution, resource popularity, prep-time vs gain scatter + trendline,
+     median score by prep duration, per-section tactic effectiveness, and a
+     tactic x band heatmap — with a filter toolbar (score / source / resource /
+     self-study) and a live stat row. All hand-rolled SVG in the new UI.
+  3. Mobile-first: every new chart has a compact <520px variant and the whole
+     surface collapses cleanly at the 760px breakpoint.
+
+Carried over from v19.x: 3-question intake persisted to localStorage, peer
+matching, deterministic per-section insights, no login / no backend, and the
+?p= / ?band= / ?d= deep links.
 
 The template uses plain `__TOKEN__` placeholders filled by str.replace(), so the
 CSS/JS can use normal single braces with no escaping.
@@ -80,11 +91,31 @@ def main():
         {"key": "w4", "lo": 13, "hi": 9999, "label": "13+ weeks"},
     ]
 
+    # Point-gain buckets (start_score -> total_score) for the Explore gain chart.
+    gainb = [
+        {"key": "g1", "lo": 0, "hi": 49, "label": "< 50"},
+        {"key": "g2", "lo": 50, "hi": 99, "label": "50–99"},
+        {"key": "g3", "lo": 100, "hi": 149, "label": "100–149"},
+        {"key": "g4", "lo": 150, "hi": 199, "label": "150–199"},
+        {"key": "g5", "lo": 200, "hi": 9999, "label": "200+"},
+    ]
+
+    # Prep-duration buckets for the Explore "score by prep time" chart.
+    prepb = [
+        {"key": "p1", "lo": 0, "hi": 4, "label": "0–4w"},
+        {"key": "p2", "lo": 5, "hi": 8, "label": "5–8w"},
+        {"key": "p3", "lo": 9, "hi": 12, "label": "9–12w"},
+        {"key": "p4", "lo": 13, "hi": 24, "label": "13–24w"},
+        {"key": "p5", "lo": 25, "hi": 9999, "label": "25w+"},
+    ]
+
     deb_js = json.dumps(deb, ensure_ascii=False, separators=(",", ":"))
     details_js = json.dumps(details, ensure_ascii=False, separators=(",", ":"))
     bands_js = json.dumps(bands, ensure_ascii=False)
     curb_js = json.dumps(curb, ensure_ascii=False)
     weekb_js = json.dumps(weekb, ensure_ascii=False)
+    gainb_js = json.dumps(gainb, ensure_ascii=False)
+    prepb_js = json.dumps(prepb, ensure_ascii=False)
 
     tooltips = {
         "Maybe Promo": "Possible promotional signals (brand-endorsement framing, a vendor "
@@ -99,12 +130,14 @@ def main():
             .replace("__BANDS__", bands_js)
             .replace("__CURB__", curb_js)
             .replace("__WEEKB__", weekb_js)
+            .replace("__GAINB__", gainb_js)
+            .replace("__PREPB__", prepb_js)
             .replace("__TOOLTIPS__", json.dumps(tooltips, ensure_ascii=False))
             .replace("__NDEB__", str(len(deb)))
             .replace("__MEDIAN__", str(int(st.median(scores))) if scores else "—")
             .replace("__MINDATE__", min_date).replace("__MAXDATE__", max_date))
-    (BASE / "dashboard_v19.html").write_text(html)
-    print(f"dashboard_v19.html written. {len(deb)} debriefs, {len(details)} detail pages.")
+    (BASE / "dashboard_v19_2.html").write_text(html)
+    print(f"dashboard_v19_2.html written. {len(deb)} debriefs, {len(details)} detail pages.")
     for b in bands:
         print(f"  target {b['label']}: {b['count']}")
 
@@ -424,6 +457,16 @@ select.pick:focus{border-color:var(--primary)}
 .reschip{font-size:13.5px;font-weight:600;color:var(--ink);background:var(--surface-2);
   border:1px solid var(--border);border-radius:11px;padding:8px 13px;display:inline-flex;align-items:center;gap:8px}
 .reschip .d{width:7px;height:7px;border-radius:50%;background:var(--primary)}
+
+/* ---- section insights (deterministic, per range) ---- */
+.secinsights{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.seccard{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:16px 17px}
+.seccard h4{font-size:14.5px;font-weight:800;display:flex;align-items:baseline;gap:7px;margin-bottom:2px}
+.seccard h4 .n{font-size:12px;font-weight:700;color:var(--ink-3)}
+.seccard .secn{font-size:12px;color:var(--ink-3);margin-bottom:10px}
+.seccard .tacwrap{margin-bottom:12px}
+.seccard .notelist li{font-size:13.5px}
+.seccard .empty2{font-size:13px;color:var(--ink-3);padding:6px 0}
 .spark{width:100%;height:320px;min-height:320px}
 .timelinecard{padding-bottom:18px}
 .timelinegrid{stroke:var(--border);stroke-width:1}
@@ -435,6 +478,75 @@ select.pick:focus{border-color:var(--primary)}
 .origin{display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:#fff;
   background:var(--primary);padding:13px 20px;border-radius:13px;transition:.18s var(--ease);margin-top:4px}
 .origin:hover{background:var(--primary-d);transform:translateY(-1px)}
+
+/* ================= EXPLORE: filter toolbar ================= */
+.filterbar{position:sticky;top:62px;z-index:20;display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;
+  margin-bottom:20px;background:rgba(255,255,255,.9);backdrop-filter:saturate(1.4) blur(10px);
+  -webkit-backdrop-filter:saturate(1.4) blur(10px);border:1px solid var(--border);
+  border-radius:var(--radius);padding:13px 16px;box-shadow:var(--shadow)}
+.fgroup{display:flex;align-items:center;gap:8px;min-width:0}
+.flabel{font-size:11px;font-weight:800;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;flex:none}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{font-size:13px;font-weight:700;color:var(--ink-2);background:var(--surface-2);
+  border:1.5px solid var(--border);border-radius:20px;padding:6px 12px;transition:.15s var(--ease);white-space:nowrap}
+.fchip:hover{border-color:var(--border-2)}
+.fchip.on{background:var(--primary-l);border-color:var(--primary);color:var(--primary-d)}
+.filterbar select.pick{height:38px;font-size:13.5px;padding:0 11px}
+.filterbar .spacer{flex:1;min-width:0}
+.fcount{font-size:13px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.fcount b{color:var(--primary-d);font-variant-numeric:tabular-nums}
+.freset{font-size:12.5px;font-weight:700;color:var(--ink-2);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:10px;padding:7px 12px;flex:none}
+.freset:hover{color:var(--ink);border-color:var(--border-2)}
+
+/* ================= generic chart cards + SVG ================= */
+.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chartgrid+.chartgrid{margin-top:16px}
+.chartgrid.one{grid-template-columns:1fr}
+.chartcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:322px}
+.chartcard h3{font-size:16px;font-weight:800;margin-bottom:3px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.chartcard h3 .hint{font-size:12px;font-weight:600;color:var(--ink-3)}
+.chartcard .psub{margin-bottom:14px}
+.chartbox{width:100%;height:244px;position:relative}
+.chartbox.tall{height:300px}
+.hbarbox{width:100%;padding-top:4px}
+.hbarbox .bars{gap:12px}
+.chartbox svg{display:block;width:100%;height:100%;overflow:visible}
+.chartempty{display:flex;align-items:center;justify-content:center;min-height:236px;color:var(--ink-3);
+  font-size:13.5px;text-align:center;padding:20px;line-height:1.5}
+.axis{stroke:var(--border-2);stroke-width:1}
+.gridline{stroke:var(--border);stroke-width:1;stroke-dasharray:3 4}
+.axlabel{fill:var(--ink-3);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.axtitle{fill:var(--ink-3);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.vbar{transform-box:fill-box;transform-origin:center bottom;transform:scaleY(0);transition:transform .8s var(--ease)}
+.grown .vbar{transform:scaleY(1)}
+.vcount{fill:var(--ink-2);font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
+.blabel2{fill:var(--ink-2);font-size:11.5px;font-weight:700}
+.legend{display:flex;gap:15px;flex-wrap:wrap;margin-top:13px;font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.dot{transition:opacity .25s var(--ease)}
+.trend{stroke-dasharray:7 5;stroke-width:2.4;fill:none;opacity:.85}
+
+/* ================= score-band jump (plan) ================= */
+.bandjump{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;
+  padding:18px 20px 16px;margin-top:6px}
+.jumprow{display:flex;align-items:center;gap:16px;flex-wrap:nowrap}
+.jumpnode{text-align:center;flex:none}
+.jumpnode .jn{font-size:27px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1}
+.jumpnode .jl{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-top:5px}
+.jumpnode.target .jn{color:var(--primary-d)}
+.jumparrow{flex:1;min-width:64px;position:relative;height:38px;display:flex;align-items:center}
+.jumparrow .jtrack{height:8px;width:100%;border-radius:8px;
+  background:linear-gradient(90deg,var(--blue),var(--primary),var(--violet))}
+.jumparrow .jhead{position:absolute;right:-2px;top:50%;transform:translateY(-50%);
+  border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid var(--violet)}
+.jumparrow .jgain{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12.5px;font-weight:800;
+  color:var(--primary-d);background:var(--surface);border:1px solid var(--border-2);border-radius:20px;
+  padding:2px 11px;white-space:nowrap}
+.bandjump .jnote{font-size:13px;color:var(--ink-2);margin-top:14px;line-height:1.5}
+.bandjump .jnote b{color:var(--ink)}
 
 /* ---- about ---- */
 .about h2{font-size:26px;font-weight:800;margin-bottom:12px}
@@ -470,6 +582,7 @@ footer a{color:var(--ink-2);font-weight:600}
   .statrow{grid-template-columns:1fr 1fr;gap:10px}
   .grid2{grid-template-columns:1fr}
   .grid2>.panel{min-height:0;height:auto}
+  .secinsights{grid-template-columns:1fr}
   .cards,#browseList{grid-template-columns:1fr}
   .dist{height:310px;min-height:310px}
   .heatmap{grid-template-columns:minmax(104px,1.1fr) repeat(3,1fr);gap:5px}
@@ -480,10 +593,26 @@ footer a{color:var(--ink-2);font-weight:600}
   .panel{padding:18px}
   .dhero .big{font-size:40px}
   .spark{height:250px;min-height:250px}
+  .chartgrid{grid-template-columns:1fr;gap:12px}
+  .chartcard{min-height:0;padding:16px}
+  .chartbox{height:210px}
+  .chartbox.tall{height:248px}
+  .filterbar{position:static;padding:12px 13px;gap:10px 12px}
+  .filterbar .fgroup{width:100%;flex-wrap:wrap}
+  .filterbar .flabel{width:100%}
+  .filterbar .spacer{display:none}
+  .filterbar select.pick{flex:1;min-width:120px}
+  .bandjump{padding:15px 14px 14px}
+  .jumprow{gap:8px}
+  .jumpnode .jn{font-size:15px;white-space:nowrap}
+  .jumpnode .jl{font-size:9px}
+  .jumparrow{min-width:38px;height:30px}
+  .jumparrow .jgain{font-size:10px;padding:1px 7px}
+  .legend{gap:11px;font-size:11.5px}
 }
 @media(prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
-  .barfill,.dist .dbar,.cmp .cbar{transition:none!important}
+  .barfill,.dist .dbar,.cmp .cbar,.vbar{transition:none!important}
 }
 </style></head>
 <body>
@@ -510,90 +639,73 @@ footer a{color:var(--ink-2);font-weight:600}
 
 <main id="view-explore" class="hidden">
   <div class="wrap">
-    <section class="hero">
+    <section class="hero" style="padding:44px 0 4px">
       <span class="eyebrow"><span class="pulse"></span>__NDEB__ real GMAT debriefs</span>
-      <h1>What GMAT score are you aiming for?</h1>
-      <p class="lede">Get a practical plan from people who <b>actually hit it</b> — what to focus on, what to practice, and which stories prove the pattern.</p>
-      <div class="bands" id="bands"></div>
+      <h1>Explore the data</h1>
+      <p class="lede">Every debrief, visualised. Filter by score band, source, and resource to see how scores, sections, prep time, and tactics move together.</p>
     </section>
   </div>
 
   <div class="wrap">
-    <section class="block" id="results">
-      <div class="shead">
-        <div>
-          <h2 id="resTitle">Your plan for this score range</h2>
-          <p class="sub" id="resSub"></p>
-        </div>
-      </div>
-      <div class="statrow" id="statrow"></div>
-      <div class="actiongrid" id="actionPlan"></div>
-    </section>
+    <div class="filterbar" id="filterbar"></div>
+    <div class="statrow" id="xstat"></div>
 
-    <section class="block" id="patterns">
-      <div class="shead"><div>
-        <h2>Distilled signals</h2>
-        <p class="sub">Directional patterns from this score range. Each card includes the sample behind it so you can judge the strength of the signal.</p>
-      </div></div>
-      <div class="panel">
-        <h3>Where scores land</h3>
-        <p class="psub" id="distSub"></p>
-        <div class="dist" id="dist"></div>
-        <div class="distnote"><span class="key"></span> <span id="distKey"></span></div>
+    <div class="chartgrid">
+      <div class="chartcard">
+        <h3>Score distribution <span class="hint" id="xdistHint"></span></h3>
+        <p class="psub">Official total score across the filtered set.</p>
+        <div class="chartbox" id="xdist"></div>
       </div>
-      <div class="grid2" style="margin-top:16px">
-        <div class="panel insightcard">
-          <h3>Typical section split</h3>
-          <p class="psub" id="splitSub"></p>
-          <div class="seccompare growfill" id="splitViz" style="margin-top:4px"></div>
-          <div class="callout" id="splitCall"></div>
-        </div>
-        <div class="panel insightcard">
-          <h3>What they studied with</h3>
-          <p class="psub" id="resSub2"></p>
-          <div class="bars growfill" id="resBars"></div>
-          <button class="insightbtn" id="resExamples" type="button">See resource examples</button>
-        </div>
+      <div class="chartcard">
+        <h3>Where each tier is weakest</h3>
+        <p class="psub">Median Q / V / DI score within each target band.</p>
+        <div class="chartbox" id="xsection"></div>
+        <div class="legend" id="xsectionLeg"></div>
       </div>
-      <div class="grid2" style="margin-top:16px">
-        <div class="panel insightcard">
-          <h3>Prep time &amp; score gain</h3>
-          <p class="psub" id="prepSub"></p>
-          <div class="minirow" id="prepGain"></div>
-          <div class="callout" id="prepCall"></div>
-        </div>
-        <div class="panel insightcard">
-          <h3>Tactic heatmap</h3>
-          <p class="psub" id="heatSub"></p>
-          <div class="heatmap growfill" id="tacticHeat"></div>
-        </div>
-      </div>
-    </section>
+    </div>
 
-    <section class="block" id="evidence">
-      <div class="shead"><div>
-        <h2>Evidence behind the plan</h2>
-        <p class="sub" id="cardSub"></p>
-      </div></div>
-      <div class="cards" id="recoCards"></div>
-      <button class="morebtn" onclick="jumpBrowse()">Browse all debriefs <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-    </section>
-
-    <section class="block" id="browse">
-      <div class="shead"><div>
-        <h2>Browse every debrief</h2>
-        <p class="sub">All __NDEB__ stories. Search a topic or filter by source.</p>
-      </div></div>
-      <div class="tools">
-        <label class="search">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input id="q" type="search" placeholder="Search title, tactic, or resource…" autocomplete="off">
-        </label>
-        <select class="pick" id="fBand"><option value="">All scores</option></select>
-        <select class="pick" id="fSrc"><option value="">All sources</option></select>
+    <div class="chartgrid">
+      <div class="chartcard">
+        <h3>How big a jump is realistic?</h3>
+        <p class="psub">Start-to-official point gain, where a start score was reported.</p>
+        <div class="chartbox" id="xgain"></div>
       </div>
-      <div id="browseList"></div>
-      <div class="empty hidden" id="browseEmpty">No debriefs match that. Try a wider search.</div>
+      <div class="chartcard">
+        <h3>Most-used resources</h3>
+        <p class="psub">Share of debriefs naming each — popularity, not proof of effectiveness.</p>
+        <div class="hbarbox" id="xres"></div>
+      </div>
+    </div>
+
+    <div class="chartgrid">
+      <div class="chartcard">
+        <h3>Prep time vs score gain</h3>
+        <p class="psub">Each dot is a debrief; the dashed line is the overall trend.</p>
+        <div class="chartbox tall" id="xscatter"></div>
+      </div>
+      <div class="chartcard">
+        <h3>Does more prep time help?</h3>
+        <p class="psub">Median total score by weeks of prep.</p>
+        <div class="chartbox" id="xprep"></div>
+      </div>
+    </div>
+
+    <div class="chartgrid one">
+      <div class="chartcard">
+        <h3>Tactic adoption by score band <span class="hint">tap a cell for examples</span></h3>
+        <p class="psub">Share of each band that mentions a recurring tactic.</p>
+        <div class="heatmap" id="xheat" style="margin-top:4px"></div>
+      </div>
+    </div>
+
+    <section class="block" id="xbrowse">
+      <div class="shead"><div>
+        <h2>Browse the filtered debriefs</h2>
+        <p class="sub" id="xbrowseSub"></p>
+      </div></div>
+      <div id="xbrowseList" class="cards"></div>
+      <div class="empty hidden" id="xbrowseEmpty">No debriefs match these filters. Use Reset above to clear them.</div>
+      <button class="morebtn hidden" id="xbrowseMore" onclick="xShowMore()">Show more <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     </section>
   </div>
 </main>
@@ -642,7 +754,7 @@ footer a{color:var(--ink-2);font-weight:600}
 </div></footer>
 
 <script>
-const DEB=__DEB__, DETAILS=__DETAILS__, BANDS=__BANDS__, CURB=__CURB__, WEEKB=__WEEKB__, TT=__TOOLTIPS__;
+const DEB=__DEB__, DETAILS=__DETAILS__, BANDS=__BANDS__, CURB=__CURB__, WEEKB=__WEEKB__, GAINB=__GAINB__, PREPB=__PREPB__, TT=__TOOLTIPS__;
 const RM=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const BANDC={b1:{c:'var(--blue)',d:'var(--blue)',l:'var(--blue-l)'},
             b2:{c:'var(--primary)',d:'var(--primary-d)',l:'var(--primary-l)'},
@@ -701,6 +813,44 @@ function rowsForStrat(rows,sec,label){
   return rows.filter(d=>(d.strat||[]).includes(prefix+': '+label));
 }
 function bestExamples(rows,n){return rows.slice().sort((a,b)=>richScore(b)-richScore(a)||(b.total||0)-(a.total||0)).slice(0,n||6);}
+
+/* ---- deterministic per-section insights: top tactics + representative verbatim notes ----
+   `exclude` is shared across Q/V/DI within one render pass: some source posts repeat the same
+   sentence across multiple section-note arrays, so without this a single duplicated line could
+   surface as the "representative quote" for two different sections. */
+function sectionQuotes(rows,secCode,limit,exclude){
+  const seen=new Set(),out=[];
+  rows.slice().sort((a,b)=>richScore(b)-richScore(a)).forEach(d=>{
+    if(out.length>=(limit||3)||seen.has(d.id))return;
+    const notes=(DETAILS[d.id]&&DETAILS[d.id].sections&&DETAILS[d.id].sections[secCode])||[];
+    const pick=notes.find(n=>!exclude.has(n));
+    if(!pick)return;
+    seen.add(d.id);exclude.add(pick);out.push({id:d.id,text:pick});
+  });
+  return out;
+}
+function sectionInsight(rows,key,exclude){
+  const secCode=sectionCode(key),med=sectionMedians(rows)[key];
+  const withNotes=rows.filter(d=>((DETAILS[d.id]&&DETAILS[d.id].sections&&DETAILS[d.id].sections[secCode])||[]).length).length;
+  return{key,name:sectionLabel(key),med,top:topStrats(rows,secCode,3),quotes:sectionQuotes(rows,secCode,3,exclude),withNotes};
+}
+const SECCOL={q:['--blue','--blue-l'],v:['--violet','--violet-l'],di:['--amber','--amber-l']};
+function renderSectionInsights(containerId,rows){
+  const el=document.getElementById(containerId);if(!el)return;
+  const exclude=new Set();
+  el.innerHTML=['q','v','di'].map(key=>{
+    const ins=sectionInsight(rows,key,exclude),[c,cl]=SECCOL[key];
+    const tacHTML=ins.top.length?`<div class="tacwrap">${ins.top.map(([t,n])=>
+      `<span class="tacchip" style="background:var(${cl});color:var(${c})">${esc(t)} <b>${pct(n,rows.length)}%</b></span>`).join('')}</div>`:'';
+    const quoteHTML=ins.quotes.length?`<ul class="notelist" style="--bullet:var(${c})">${ins.quotes.map(q=>`<li>${esc(q.text)}</li>`).join('')}</ul>`
+      :`<div class="empty2">Not enough detailed notes for ${esc(ins.name)} in this range yet.</div>`;
+    return `<div class="seccard">
+      <h4 style="color:var(${c})">${esc(ins.name)}${ins.med!=null?`<span class="n">typical ${Math.round(ins.med)}</span>`:''}</h4>
+      <div class="secn">${ins.withNotes} of ${rows.length} debriefs have detailed ${esc(ins.name)} notes</div>
+      ${tacHTML}${quoteHTML}
+    </div>`;
+  }).join('');
+}
 function activeFocusKey(rows){
   if(['q','v','di'].includes(state.focus))return state.focus;
   const weak=weakestSection(rows);
@@ -796,6 +946,18 @@ function renderPlanResult(){
     {v:prep.length?fmt(median(prep))+'w':'—',l:'median prep time',cls:''},
     {v:rows.length,l:`total in ${b.label}`,cls:'green'},
   ];
+  // score-band jump framing: how the current bucket reaches the target band
+  const startersCur=DEB.filter(d=>d.start!=null&&cur&&d.start>=cur.lo&&d.start<=cur.hi);
+  const reachedTgt=startersCur.filter(d=>inBand(d,b));
+  const reachPct=startersCur.length>=5?pct(reachedTgt.length,startersCur.length):null;
+  const pStart=peers.map(d=>d.start).filter(x=>x!=null),pTot=peers.map(d=>d.total).filter(x=>x!=null);
+  const medStart=pStart.length?Math.round(median(pStart)):null,medTot=pTot.length?Math.round(median(pTot)):null;
+  const medGain=gains.length?Math.round(median(gains)):null,medPrep=prep.length?fmt(median(prep)):null;
+  let jnote='';
+  if(reachPct!=null)jnote+=`Of <b>${startersCur.length}</b> debriefs that started in ${esc(cur.label)}, <b>${reachPct}%</b> reached ${esc(b.label)}. `;
+  if(medStart&&medTot)jnote+=`In your cohort the typical path was <b>${medStart} → ${medTot}</b>${medGain?` (+${medGain})`:''}${medPrep?` over <b>${medPrep}w</b>`:''}.`;
+  if(!jnote)jnote=`Few debriefs report a start score for ${esc(cur.label)} yet — use the ${esc(b.label)} score-band insights below as your guide.`;
+
   document.getElementById('planResult').innerHTML=`
     <div class="planhead">
       <div class="ptop">
@@ -808,15 +970,110 @@ function renderPlanResult(){
       <div class="statrow" style="margin-top:18px">${stats.map(s=>`<div class="stat ${s.cls}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')}</div>
       ${pace?`<div class="pacecall">${pace}</div>`:''}
     </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>The jump you're planning <span class="hint">${esc(cur.label)} → ${esc(b.label)}</span></h3>
+      <div class="bandjump">
+        <div class="jumprow">
+          <div class="jumpnode"><div class="jn">${esc(cur.label)}</div><div class="jl">You now</div></div>
+          <div class="jumparrow"><div class="jtrack"></div><div class="jhead"></div>${medGain?`<div class="jgain">+${medGain} typical</div>`:''}</div>
+          <div class="jumpnode target"><div class="jn">${esc(b.label)}</div><div class="jl">Target</div></div>
+        </div>
+        <div class="jnote">${jnote}</div>
+      </div>
+    </div>
     <div class="actiongrid" id="planActions" style="margin-top:18px"></div>
+    <section class="block" id="planInsights">
+      <div class="shead"><div><h2>What actually helped, section by section</h2><p class="sub" id="planInsSub"></p></div></div>
+      <div class="secinsights" id="planSecInsights"></div>
+    </section>
+    <section class="block" id="planAnalytics">
+      <div class="shead"><div><h2>Inside the ${esc(b.label)} range</h2>
+        <p class="sub">Score-band insights from all <b>${rows.length}</b> debriefs at your target — where scores land, section balance, resources, and tactic adoption.</p></div></div>
+      <div class="panel">
+        <h3>Where scores land <span class="hint">your target band highlighted</span></h3>
+        <div class="chartbox" id="planDist" style="margin-top:8px"></div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="panel insightcard">
+          <h3>Typical section split</h3>
+          <p class="psub">Median Q / V / DI among ${esc(b.label)} debriefs with complete splits.</p>
+          <div class="seccompare growfill" id="planSplit" style="margin-top:4px"></div>
+          <div class="callout" id="planSplitCall"></div>
+        </div>
+        <div class="panel insightcard">
+          <h3>What they studied with</h3>
+          <p class="psub">Most-named resources in this range — popularity, not proof.</p>
+          <div class="growfill" id="planRes"></div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="panel insightcard">
+          <h3>Prep &amp; gain context</h3>
+          <p class="psub">Only some debriefs report these, so treat them as planning bounds.</p>
+          <div class="minirow" id="planPrep"></div>
+        </div>
+        <div class="panel insightcard">
+          <h3>Tactic adoption by band <span class="hint">tap a cell for examples</span></h3>
+          <p class="psub">How often each recurring tactic shows up across score bands.</p>
+          <div class="heatmap growfill" id="planHeat"></div>
+        </div>
+      </div>
+    </section>
     <section class="block" id="planEvidence">
       <div class="shead"><div><h2>Proof behind your plan</h2><p class="sub">Real debriefs closest to your situation.</p></div></div>
       <div class="cards" id="planCards"></div>
-      <button class="morebtn" onclick="showView('explore')">See full analytics for ${esc(b.label)} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      <button class="morebtn" onclick="showView('explore')">Open the full data explorer <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     </section>`;
   renderPlanActions(peers,b);
+  document.getElementById('planInsSub').innerHTML=`Aggregated from the same <b>${peers.length}</b> debriefs behind your plan — no need to open each one individually.`;
+  renderSectionInsights('planSecInsights',peers);
+  renderPlanAnalytics();
   document.getElementById('planCards').innerHTML=bestExamples(peers,6).map(debCardHTML).join('');
   track('plan_view',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,matched,sample:peers.length});
+}
+function planAnalyticsShown(){
+  return !!(plan.cur&&plan.tgt&&plan.wk&&!showIntakeForm&&document.getElementById('planDist')
+    &&!document.getElementById('view-plan').classList.contains('hidden'));
+}
+function renderPlanAnalytics(){
+  if(!plan.tgt)return;
+  const b=bandOf(plan.tgt),rows=debsIn(b);
+  if(document.getElementById('planDist'))paint('planDist',svgHist(DEB,{highlight:new Set([b.key])}));
+  const split=document.getElementById('planSplit');
+  if(split){
+    const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
+    const slo=55,shi=90,sscale=v=>Math.max(2,Math.min(100,Math.round(100*(v-slo)/(shi-slo))));
+    const med=sectionMedians(rows),weak=weakestSection(rows);
+    split.innerHTML=[['q','Quant'],['v','Verbal'],['di','Data Insights']].map(([k,name])=>{
+      const m=med[k]!=null?Math.round(med[k]):null;if(m==null)return '';
+      return `<div class="cmp"><div class="cl">${name}</div><div class="ctrack"><div class="cbar" style="--w:${sscale(m)}%;background:${cm[k]}"></div></div><div class="cscore" style="color:${cm[k]}">${m}</div></div>`;}).join('')
+      ||'<div class="empty2" style="color:var(--ink-3);font-size:13px">No complete section splits in this range.</div>';
+    if(!RM)requestAnimationFrame(()=>split.classList.add('grown'));else split.classList.add('grown');
+    const call=document.getElementById('planSplitCall');
+    if(call)call.innerHTML=weak?`<b>${weak.name}</b> is the lowest median split in ${esc(b.label)}. Treat it as your first diagnostic checkpoint, not a verdict.`:`Not enough complete section splits to name a bottleneck confidently.`;
+  }
+  const resEl=document.getElementById('planRes');
+  if(resEl){const top=topResources(rows,6);
+    paint('planRes',top.length?hBarsHTML(top,rows.length,{color:'var(--amber)'}):'<div class="chartempty" style="height:auto;min-height:0;padding:12px 0">No named resources in this range.</div>');}
+  const prepEl=document.getElementById('planPrep');
+  if(prepEl){const pp=rows.map(d=>d.prep_weeks).filter(x=>x!=null),gg=rows.map(d=>d.gain).filter(x=>x!=null),aa=rows.map(d=>d.attempts).filter(x=>x!=null),self=rows.filter(d=>(d.tags||[]).includes('Self Study')).length;
+    prepEl.innerHTML=[
+      ['Median prep',pp.length?fmt(median(pp))+'w':'—',pp.length],
+      ['Median gain',gg.length?'+'+fmt(median(gg)):'—',gg.length],
+      ['Median attempts',aa.length?fmt(median(aa)):'—',aa.length],
+      ['Self-study',self?pct(self,rows.length)+'%':'—',rows.length],
+    ].map(([l,n,s])=>`<div class="ministat"><div class="n">${n}</div><div class="l">${l}<br><span style="color:var(--ink-3);font-weight:650">n=${s}</span></div></div>`).join('');}
+  const heatEl=document.getElementById('planHeat');
+  if(heatEl){
+    const cand=countBy(rows,d=>(d.strat||[]).map(parseStrat).map(p=>p.sec+'|'+p.label)).slice(0,isCompact()?4:5)
+      .map(([k])=>{const i=k.indexOf('|');return {sec:k.slice(0,i),label:k.slice(i+1)};});
+    const cells=['<div class="hmhead"></div>'];
+    BANDS.forEach(bd=>cells.push(`<div class="hmhead">${bd.label.replace(' – ','-')}</div>`));
+    cand.forEach(item=>{cells.push(`<div class="hmlabel">${esc(item.label)}</div>`);
+      BANDS.forEach(bd=>{const br=debsIn(bd),pool=rowsForStrat(br,item.sec,item.label),p=pct(pool.length,br.length),a=Math.max(.06,Math.min(.6,p/100*.9));
+        cells.push(`<div class="hmcell" style="--a:${a.toFixed(2)}"><button type="button" onclick='openHeatCohort(${JSON.stringify(item.sec)},${JSON.stringify(item.label)},${JSON.stringify(bd.key)})'>${p}%</button></div>`);});});
+    heatEl.innerHTML=cells.join('');
+  }
 }
 function renderPlanActions(peers,b){
   const weak=weakestSection(peers),secKey=weak?weak.key:'di';
@@ -883,113 +1140,212 @@ function handlePlanAction(kind){
 function jumpPlanEvidence(){const t=document.getElementById('planEvidence');
   scrollTo({top:t.getBoundingClientRect().top+scrollY-70,behavior:RM?'auto':'smooth'});}
 
-/* ================= EXPLORE THE DATA (band-scoped, general) ================= */
-function renderBands(){
-  document.getElementById('bands').innerHTML=BANDS.map(b=>{
-    const c=BANDC[b.key];
-    return `<button class="band ${b.key===state.band?'on':''}" data-k="${b.key}"
-      style="--bandc:${c.c};--bandc-d:${c.d};--bandc-l:${c.l}" onclick="pickBand('${b.key}',true)">
-      <div class="bnum">${b.label}</div>
-      <div class="bname">${esc(b.name)}</div>
-      <div class="bblurb">${esc(b.blurb)}</div>
-      <div class="bcount"><b>${b.count}</b> debriefs</div>
-      <span class="barrow">&rarr;</span>
-    </button>`;}).join('');
+/* ================= SVG CHART PRIMITIVES (themed, no chart library) ================= */
+let _uid=0;
+function uid(){return 'g'+(++_uid);}
+function isCompact(){return window.innerWidth<520;}
+function niceTicks(min,max,count){
+  if(max<=min)max=min+1;
+  const step0=(max-min)/(count||4),mag=Math.pow(10,Math.floor(Math.log10(step0)||0)),norm=step0/mag;
+  let step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
+  const lo=Math.ceil(min/step)*step,out=[];
+  for(let v=lo;v<=max+1e-9;v+=step)out.push(Math.round(v*100)/100);
+  return out.length?out:[min,max];
 }
-function pickBand(key,scroll){
-  state.band=key;
-  document.querySelectorAll('.band').forEach(el=>el.classList.toggle('on',el.dataset.k===key));
-  const b=bandOf(key);
-  history.replaceState({band:key},'', '?band='+b.lo);
-  renderResults();renderPatterns();
-  track('band_select',{band:b.label});
-  if(scroll){const t=document.getElementById('results');
-    const y=t.getBoundingClientRect().top+scrollY-70;
-    scrollTo({top:y,behavior:RM?'auto':'smooth'});}
+/* re-run the grow animation each render: reset, reflow, then add .grown */
+function paint(id,html){
+  const el=document.getElementById(id);if(!el)return;
+  el.classList.remove('grown');el.innerHTML=html;
+  if(RM){el.classList.add('grown');return;}
+  void el.offsetWidth;requestAnimationFrame(()=>el.classList.add('grown'));
 }
-function renderResults(){
-  const b=bandOf(state.band),rows=debsIn(b);
-  document.getElementById('resTitle').textContent='Your plan for '+b.label;
-  document.getElementById('resSub').innerHTML=`A directional plan distilled from <b>${rows.length}</b> debriefs in this score range. Read the cards first; the stories below are proof, not homework.`;
+function svgVBars(data,opt){
+  opt=opt||{};const cmp=isCompact();
+  const W=opt.W||(cmp?360:560),H=opt.H||(cmp?240:284),padL=cmp?32:42,padR=cmp?12:16,padT=20,padB=40;
+  const base=H-padB,plotH=H-padT-padB,plotW=W-padL-padR;
+  const yMin=opt.yMin!=null?opt.yMin:0,yMax=opt.yMax!=null?opt.yMax:Math.max(1,...data.map(d=>d.value||0));
+  const sc=v=>base-(Math.max(yMin,Math.min(yMax,v))-yMin)/((yMax-yMin)||1)*plotH;
+  const grid=niceTicks(yMin,yMax,4).map(t=>{const y=sc(t);
+    return `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text class="axlabel" x="${padL-6}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${opt.fmtTick?opt.fmtTick(t):t}</text>`;}).join('');
+  const n=data.length,slot=plotW/n,bw=Math.min(cmp?30:56,slot*.62);
+  const bars=data.map((d,i)=>{
+    const v=d.value||0,y=sc(v),h=Math.max(0,base-y),x=padL+i*slot+(slot-bw)/2;
+    return `<rect class="vbar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="6" fill="${d.color||opt.color||'var(--primary)'}"><title>${esc(d.label)}: ${esc(String(d.tip!=null?d.tip:v))}</title></rect>
+      ${(d.valLabel!==''&&(v||d.valLabel!=null))?`<text class="vcount" x="${(x+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle">${d.valLabel!=null?d.valLabel:v}</text>`:''}
+      <text class="axlabel" x="${(x+bw/2).toFixed(1)}" y="${H-13}" text-anchor="middle">${esc(d.label)}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(opt.aria||'bar chart')}">${grid}<line class="axis" x1="${padL}" x2="${W-padR}" y1="${base}" y2="${base}"/>${bars}</svg>`;
+}
+function svgGroupedBars(groups,series,opt){
+  opt=opt||{};const cmp=isCompact();
+  const W=opt.W||(cmp?360:560),H=opt.H||(cmp?240:284),padL=cmp?30:40,padR=cmp?12:16,padT=16,padB=40;
+  const base=H-padB,plotH=H-padT-padB,plotW=W-padL-padR;
+  const yMin=opt.yMin!=null?opt.yMin:0,yMax=opt.yMax!=null?opt.yMax:90;
+  const sc=v=>base-(Math.max(yMin,Math.min(yMax,v))-yMin)/((yMax-yMin)||1)*plotH;
+  const grid=niceTicks(yMin,yMax,4).map(t=>{const y=sc(t);
+    return `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text class="axlabel" x="${padL-6}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${t}</text>`;}).join('');
+  const gN=groups.length,gslot=plotW/gN,sN=series.length,gpad=gslot*.16,innerW=gslot-gpad*2;
+  const bw=Math.min(cmp?15:30,(innerW/sN)*.82),gap=(innerW-bw*sN)/(sN+1);
+  const bars=groups.map((g,gi)=>{
+    const gx=padL+gi*gslot+gpad;
+    const inner=series.map((s,si)=>{const v=g.values[s.key];if(v==null)return '';
+      const x=gx+gap+si*(bw+gap),y=sc(v),h=Math.max(0,base-y);
+      return `<rect class="vbar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${s.color}"><title>${esc(g.label)} · ${esc(s.label)}: ${Math.round(v)}</title></rect>`;}).join('');
+    return inner+`<text class="axlabel" x="${(gx+innerW/2).toFixed(1)}" y="${H-13}" text-anchor="middle">${esc(g.label)}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(opt.aria||'grouped bar chart')}">${grid}<line class="axis" x1="${padL}" x2="${W-padR}" y1="${base}" y2="${base}"/>${bars}</svg>`;
+}
+function svgScatter(points,opt){
+  opt=opt||{};const cmp=isCompact();if(!points.length)return '';
+  const W=opt.W||(cmp?360:600),H=opt.H||(cmp?280:330),padL=cmp?34:44,padR=cmp?14:18,padT=14,padB=44;
+  const base=H-padB,plotH=H-padT-padB,plotW=W-padL-padR;
+  const xs=points.map(p=>p.x),ys=points.map(p=>p.y);
+  const xMin=0,xMax=opt.xMax!=null?opt.xMax:Math.max(1,...xs),yMin=Math.min(0,...ys),yMax=opt.yMax!=null?opt.yMax:Math.max(1,...ys);
+  const sx=v=>padL+(v-xMin)/((xMax-xMin)||1)*plotW,sy=v=>base-(v-yMin)/((yMax-yMin)||1)*plotH;
+  const grid=niceTicks(yMin,yMax,4).map(t=>{const y=sy(t);
+    return `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text class="axlabel" x="${padL-6}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${t}</text>`;}).join('');
+  const xax=niceTicks(xMin,xMax,5).map(t=>`<text class="axlabel" x="${sx(t).toFixed(1)}" y="${H-26}" text-anchor="middle">${t}</text>`).join('');
+  let trend='';
+  if(points.length>=4){
+    const n=points.length,sX=xs.reduce((a,b)=>a+b,0),sY=ys.reduce((a,b)=>a+b,0),
+      sXY=points.reduce((a,p)=>a+p.x*p.y,0),sXX=points.reduce((a,p)=>a+p.x*p.x,0),den=n*sXX-sX*sX;
+    if(den){const m=(n*sXY-sX*sY)/den,b0=(sY-m*sX)/n,cl=v=>Math.max(yMin,Math.min(yMax,v));
+      trend=`<line class="trend" x1="${sx(xMin).toFixed(1)}" y1="${sy(cl(m*xMin+b0)).toFixed(1)}" x2="${sx(xMax).toFixed(1)}" y2="${sy(cl(m*xMax+b0)).toFixed(1)}" stroke="var(--ink-3)"/>`;}
+  }
+  const dots=points.map(p=>`<circle class="dot" cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="${cmp?4:5}" fill="${p.color||'var(--primary)'}" fill-opacity=".72"><title>${esc(p.tip||'')}</title></circle>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(opt.aria||'scatter plot')}">${grid}${xax}<line class="axis" x1="${padL}" x2="${W-padR}" y1="${base}" y2="${base}"/><line class="axis" x1="${padL}" x2="${padL}" y1="${padT}" y2="${base}"/>${trend}${dots}<text class="axtitle" x="${(padL+plotW/2).toFixed(1)}" y="${H-7}" text-anchor="middle">${esc(opt.xTitle||'')}</text></svg>`;
+}
+function svgHist(rows,opt){
+  opt=opt||{};const cmp=isCompact(),g=uid(),cnt={};
+  rows.forEach(d=>{if(d.total!=null)cnt[d.total]=(cnt[d.total]||0)+1;});
+  const pts=[];for(let s=655;s<=805;s+=10)pts.push(s);
+  const max=Math.max(1,...pts.map(s=>cnt[s]||0));
+  const W=cmp?360:600,H=cmp?248:296,padX=cmp?18:28,padT=24,padB=42,base=H-padB,plotH=H-padT-padB;
+  const step=(W-padX*2)/pts.length,bw=Math.min(cmp?16:30,step*.72),hl=opt.highlight;
+  const bars=pts.map((s,i)=>{
+    const n=cnt[s]||0,band=BANDS.find(b=>s>=b.lo&&s<=b.hi),inb=hl?(band&&hl.has(band.key)):true;
+    const h=n?Math.max(4,n/max*plotH):0,x=padX+i*step+(step-bw)/2,y=base-h,show=(s%20===15)||s===655||s===805;
+    return `<rect class="vbar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="6" fill="${inb?`url(#${g})`:'#d7d8e7'}"><title>${s}: ${n} debriefs</title></rect>
+      ${n>=(cmp?18:9)?`<text class="vcount" x="${(x+bw/2).toFixed(1)}" y="${Math.max(15,y-6).toFixed(1)}" text-anchor="middle">${n}</text>`:''}
+      ${show?`<text class="axlabel" x="${(x+bw/2).toFixed(1)}" y="${H-14}" text-anchor="middle">${s}</text>`:''}`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Score distribution">
+    <defs><linearGradient id="${g}" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#7c5cf0"/><stop offset="1" stop-color="#5b5bd6"/></linearGradient></defs>
+    <line class="axis" x1="${padX}" x2="${W-padX}" y1="${base}" y2="${base}"/>${bars}</svg>`;
+}
+function hBarsHTML(data,total,opt){
+  opt=opt||{};const mx=data.length?data[0][1]:1;
+  return '<div class="bars">'+data.map(([label,n])=>{const p=Math.round(100*n/(total||1));
+    return `<div class="barrow"><div class="blabel"><span class="bname"><span class="txt">${esc(label)}</span></span><span class="bpct">${p}%</span></div>
+      <div class="bartrack"><div class="barfill" style="--w:${Math.round(100*n/mx)}%${opt.color?';background:'+opt.color:''}"></div></div></div>`;}).join('')+'</div>';
+}
 
-  const totals=rows.map(d=>d.total).filter(x=>x!=null);
-  const preps=rows.map(d=>d.prep_weeks).filter(x=>x!=null);
-  const gains=rows.map(d=>d.gain).filter(x=>x!=null);
-  const selfn=rows.filter(d=>(d.tags||[]).includes('Self Study')).length;
+/* ================= EXPLORE THE DATA (global, filterable charts) ================= */
+let xf={bands:new Set(),src:'',res:'',self:false};
+let xLimit=12;
+function xFiltered(ignoreBand){
+  let rows=DEB.slice();
+  if(!ignoreBand&&xf.bands.size)rows=rows.filter(d=>{const b=BANDS.find(x=>inBand(d,x));return b&&xf.bands.has(b.key);});
+  if(xf.src)rows=rows.filter(d=>d.source===xf.src);
+  if(xf.res)rows=rows.filter(d=>(d.resources||[]).includes(xf.res));
+  if(xf.self)rows=rows.filter(d=>(d.tags||[]).includes('Self Study'));
+  return rows;
+}
+function renderFilterBar(){
+  const fb=document.getElementById('filterbar');if(!fb)return;
+  const srcs=[...new Set(DEB.map(d=>d.source))].sort();
+  const resAll=topResources(DEB,14).map(r=>r[0]);
+  fb.innerHTML=`
+    <div class="fgroup"><span class="flabel">Score</span><div class="chiprow">
+      ${BANDS.map(b=>`<button class="fchip ${xf.bands.has(b.key)?'on':''}" onclick="xToggleBand('${b.key}')">${b.label}</button>`).join('')}</div></div>
+    <div class="fgroup"><span class="flabel">Source</span>
+      <select class="pick" id="xfSrc"><option value="">All</option>${srcs.map(s=>`<option ${xf.src===s?'selected':''}>${esc(s)}</option>`).join('')}</select></div>
+    <div class="fgroup"><span class="flabel">Resource</span>
+      <select class="pick" id="xfRes"><option value="">All</option>${resAll.map(r=>`<option ${xf.res===r?'selected':''}>${esc(r)}</option>`).join('')}</select></div>
+    <button class="fchip ${xf.self?'on':''}" onclick="xToggleSelf()">Self-study only</button>
+    <div class="spacer"></div>
+    <span class="fcount" id="xfCount"></span>
+    <button class="freset" onclick="xReset()">Reset</button>`;
+  document.getElementById('xfSrc').onchange=e=>{xf.src=e.target.value;xLimit=12;renderExplore();};
+  document.getElementById('xfRes').onchange=e=>{xf.res=e.target.value;xLimit=12;renderExplore();};
+}
+function xToggleBand(k){xf.bands.has(k)?xf.bands.delete(k):xf.bands.add(k);xLimit=12;renderFilterBar();renderExplore();track('x_filter',{band:k});}
+function xToggleSelf(){xf.self=!xf.self;xLimit=12;renderFilterBar();renderExplore();}
+function xReset(){xf={bands:new Set(),src:'',res:'',self:false};xLimit=12;renderFilterBar();renderExplore();}
+function renderXStat(rows){
+  const tot=rows.map(d=>d.total).filter(x=>x!=null),g=rows.map(d=>d.gain).filter(x=>x!=null),p=rows.map(d=>d.prep_weeks).filter(x=>x!=null);
   const stats=[
     {v:rows.length,l:'debriefs',cls:''},
-    {v:median(totals),l:'median score',cls:'green'},
-    {v:preps.length?median(preps):null,l:'median weeks prep',cls:''},
-    {v:gains.length?'+'+median(gains):(selfn?Math.round(100*selfn/rows.length)+'%':null),
-      l:gains.length?'median score gain':'self-study only',cls:'coral'},
+    {v:tot.length?median(tot):null,l:'median score',cls:'green'},
+    {v:g.length?'+'+median(g):null,l:'median gain',cls:'coral'},
+    {v:p.length?median(p)+'w':null,l:'median prep',cls:''},
   ];
-  document.getElementById('statrow').innerHTML=stats.map(s=>
-    `<div class="stat ${s.cls}"><div class="v">${s.v==null?'—':s.v}</div><div class="l">${s.l}</div></div>`).join('');
-
-  renderActionPlan(rows,b);
-  renderRecoCards(rows,b);
-  observeGrow();
+  document.getElementById('xstat').innerHTML=stats.map(s=>`<div class="stat ${s.cls}"><div class="v">${s.v==null?'—':s.v}</div><div class="l">${s.l}</div></div>`).join('');
 }
-function renderActionPlan(rows,b){
-  const weak=weakestSection(rows),secKey=activeFocusKey(rows),secMed=sectionMedians(rows)[secKey],secTop=topStrats(rows,sectionCode(secKey),1)[0];
-  const genTop=topStrats(rows,'G',3);
-  const resTop=topResources(rows,3);
-  const proof=bestExamples(rows,6);
-  const prep=rows.map(d=>d.prep_weeks).filter(x=>x!=null),gains=rows.map(d=>d.gain).filter(x=>x!=null);
-  const cards=[
-    {k:'Section focus',c:'var(--blue)',l:'var(--blue-l)',
-      h:weak?`Start with ${weak.name}`:'Start section by section',
-      p:weak?`${weak.name} is the lowest median split in this band (${sectionShort(secKey)}${weak.score}). Treat that as the first diagnostic checkpoint, not a verdict.`:'Not enough full section splits here, so start by separating Quant, Verbal, and DI practice.',
-      m:secTop?`<b>${pct(secTop[1],rows.length)}%</b> mention ${esc(secTop[0])}`:`<b>${rows.length}</b> examples in range`,
-      a:'See section examples',kind:'section'},
-    {k:'Practice loop',c:'var(--primary)',l:'var(--primary-l)',
-      h:genTop[0]?esc(genTop[0][0]):'Build a review loop',
-      p:'The repeated pattern is not just doing more questions. People describe a loop of mocks, review, targeted drills, and test-day execution.',
-      m:genTop[0]?`<b>${pct(genTop[0][1],rows.length)}%</b> name this habit`:`<b>${rows.length}</b> debriefs sampled`,
-      a:'Open habit examples',kind:'habit'},
-    {k:'Resource stack',c:'var(--amber)',l:'var(--amber-l)',
-      h:resTop[0]?esc(resTop[0][0]):'Use named materials deliberately',
-      p:'Resources are popularity signals, not proof of causality. The useful move is seeing how students combined official material, practice banks, and review.',
-      m:resTop[0]?`<b>${pct(resTop[0][1],rows.length)}%</b> mention the top resource`:`<b>0</b> named resources`,
-      a:'See resource examples',kind:'resource'},
-    {k:'Proof examples',c:'var(--green)',l:'var(--green-l)',
-      h:'Read only the highest-signal stories',
-      p:'Use debriefs after the plan: look for situations like yours, then copy the process details rather than the exact product stack.',
-      m:prep.length||gains.length?`<b>${prep.length}</b> prep-time / <b>${gains.length}</b> gain samples`:`<b>${proof.length}</b> detailed stories`,
-      a:'Jump to proof',kind:'proof'},
-  ];
-  document.getElementById('actionPlan').innerHTML=cards.map(x=>`
-    <div class="actioncard" style="--ac:${x.c};--acl:${x.l}">
-      <span class="k">${x.k}</span>
-      <h3>${x.h}</h3>
-      <p>${x.p}</p>
-      <div class="metric">${x.m}</div>
-      <button class="actbtn" type="button" onclick="handleAction('${x.kind}')">${x.a}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
-    </div>`).join('');
+function renderXSection(rows){
+  const groups=BANDS.map(b=>{const br=rows.filter(d=>inBand(d,b)),m=sectionMedians(br);return {label:b.label.replace(' – ','–'),values:{q:m.q,v:m.v,di:m.di}};});
+  const allv=groups.flatMap(g=>Object.values(g.values)).filter(x=>x!=null);
+  const box=document.getElementById('xsection'),leg=document.getElementById('xsectionLeg');
+  if(!allv.length){box.innerHTML='<div class="chartempty">No complete section splits in this selection.</div>';leg.innerHTML='';return;}
+  const series=[{key:'q',label:'Quant',color:'var(--blue)'},{key:'v',label:'Verbal',color:'var(--violet)'},{key:'di',label:'Data Insights',color:'var(--amber)'}];
+  const yMin=Math.max(60,Math.floor((Math.min(...allv)-4)/5)*5);
+  paint('xsection',svgGroupedBars(groups,series,{yMin,yMax:90,aria:'Median section score by band'}));
+  leg.innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join('');
 }
-function handleAction(kind){
-  const b=bandOf(state.band),rows=debsIn(b);
-  track('action_click',{kind,band:b.label});
-  if(kind==='proof'){jumpEvidence();return;}
-  if(kind==='section'){
-    const key=activeFocusKey(rows);
-    const pool=rowsForSection(rows,key);
-    openCohort(`${sectionLabel(key)} examples`,`${pool.length} ${b.label} debriefs with ${sectionLabel(key)} scores, tactics, or notes.`,bestExamples(pool,12),{kind:'section',band:b.label,section:sectionLabel(key),sample:pool.length});
-    return;
-  }
-  if(kind==='habit'){
-    const top=topStrats(rows,'G',1)[0];
-    const pool=top?rowsForStrat(rows,'G',top[0]):rows;
-    openCohort(top?`${top[0]} examples`:'Practice-loop examples',`Directional examples from ${b.label} debriefs that mention this habit.`,bestExamples(pool,12),{kind:'habit',band:b.label,tactic:top&&top[0],sample:pool.length});
-    return;
-  }
-  if(kind==='resource'){
-    const top=topResources(rows,1)[0];
-    const pool=top?rows.filter(d=>(d.resources||[]).includes(top[0])):rows;
-    openCohort(top?`${top[0]} examples`:'Resource examples',`These are posts that named the resource. Treat this as usage context, not an effectiveness ranking.`,bestExamples(pool,12),{kind:'resource',band:b.label,resource:top&&top[0],sample:pool.length});
-  }
+function renderXGain(rows){
+  const gains=rows.map(d=>d.gain).filter(x=>x!=null),box=document.getElementById('xgain');
+  if(!gains.length){box.innerHTML='<div class="chartempty">Only some debriefs report a start score, so no point-gain data in this selection.</div>';return;}
+  const data=GAINB.map(g=>({label:g.label,value:gains.filter(v=>v>=g.lo&&v<=g.hi).length,color:'var(--coral)'}));
+  paint('xgain',svgVBars(data,{aria:'Point gain distribution'}));
+}
+function renderXRes(rows){
+  const top=topResources(rows,isCompact()?7:10),box=document.getElementById('xres');
+  if(!top.length){box.innerHTML='<div class="chartempty">No named resources in this selection.</div>';return;}
+  paint('xres',hBarsHTML(top,rows.length,{color:'var(--amber)'}));
+}
+function renderXScatter(rows){
+  const raw=rows.filter(d=>d.prep_weeks!=null&&d.gain!=null),box=document.getElementById('xscatter');
+  if(raw.length<3){box.innerHTML='<div class="chartempty">Not enough debriefs report both prep time and a start score in this selection.</div>';return;}
+  const xMax=Math.min(Math.max(...raw.map(d=>d.prep_weeks)),52);
+  const pts=raw.map(d=>{const b=BANDS.find(x=>inBand(d,x)),c=b?BANDC[b.key].c:'var(--primary)';
+    return {x:Math.min(d.prep_weeks,xMax),y:d.gain,color:c,tip:`${d.prep_weeks}w → +${d.gain} (${d.total})`};});
+  paint('xscatter',svgScatter(pts,{xMax,xTitle:'weeks of prep',aria:'Prep time vs score gain'}));
+}
+function renderXPrep(rows){
+  const data=PREPB.map(p=>{const br=rows.filter(d=>d.prep_weeks!=null&&d.prep_weeks>=p.lo&&d.prep_weeks<=p.hi),m=median(br.map(d=>d.total).filter(x=>x!=null));return {label:p.label,med:m!=null?Math.round(m):null,n:br.length};});
+  const has=data.filter(d=>d.med!=null),box=document.getElementById('xprep');
+  if(has.length<2){box.innerHTML='<div class="chartempty">Not enough prep-time data in this selection.</div>';return;}
+  const vals=has.map(d=>d.med),yMin=Math.max(600,Math.floor((Math.min(...vals)-15)/10)*10),yMax=Math.min(805,Math.ceil((Math.max(...vals)+15)/10)*10);
+  paint('xprep',svgVBars(data.map(d=>({label:d.label,value:d.med!=null?d.med:yMin,valLabel:d.med!=null?d.med:'',tip:d.med!=null?`median ${d.med} · n=${d.n}`:'no data',color:'var(--primary)'})),{yMin,yMax,aria:'Median score by prep time'}));
+}
+function renderXHeat(){
+  const base=xFiltered(true);
+  const cand=countBy(base,d=>(d.strat||[]).map(parseStrat).map(p=>p.sec+'|'+p.label)).slice(0,isCompact()?5:7)
+    .map(([k])=>{const i=k.indexOf('|');return {sec:k.slice(0,i),label:k.slice(i+1)};});
+  const cells=['<div class="hmhead"></div>'];
+  BANDS.forEach(b=>cells.push(`<div class="hmhead">${b.label.replace(' – ','-')}</div>`));
+  cand.forEach(item=>{
+    cells.push(`<div class="hmlabel">${esc(item.label)}</div>`);
+    BANDS.forEach(b=>{const br=base.filter(d=>inBand(d,b)),pool=rowsForStrat(br,item.sec,item.label),p=pct(pool.length,br.length),a=Math.max(.06,Math.min(.6,p/100*.9));
+      cells.push(`<div class="hmcell" style="--a:${a.toFixed(2)}"><button type="button" onclick='openHeatCohort(${JSON.stringify(item.sec)},${JSON.stringify(item.label)},${JSON.stringify(b.key)})'>${p}%</button></div>`);});
+  });
+  document.getElementById('xheat').innerHTML=cells.join('');
+}
+function renderXBrowse(rows){
+  const sorted=rows.slice().sort((a,b)=>(b.total||0)-(a.total||0)),shown=sorted.slice(0,xLimit);
+  document.getElementById('xbrowseSub').innerHTML=`Showing <b>${Math.min(xLimit,sorted.length)}</b> of <b>${sorted.length}</b>, highest score first.`;
+  document.getElementById('xbrowseList').innerHTML=shown.map(debCardHTML).join('');
+  document.getElementById('xbrowseEmpty').classList.toggle('hidden',sorted.length>0);
+  document.getElementById('xbrowseMore').classList.toggle('hidden',sorted.length<=xLimit);
+}
+function xShowMore(){xLimit+=12;renderXBrowse(xFiltered());track('x_more',{n:xLimit});}
+function renderExplore(){
+  const rows=xFiltered();
+  const cnt=document.getElementById('xfCount');if(cnt)cnt.innerHTML=`<b>${rows.length}</b> of ${DEB.length}`;
+  renderXStat(rows);
+  paint('xdist',svgHist(rows,{highlight:xf.bands.size?xf.bands:null}));
+  const dh=document.getElementById('xdistHint');if(dh)dh.textContent=xf.bands.size?'selected bands highlighted':'';
+  renderXSection(rows);renderXGain(rows);renderXRes(rows);renderXScatter(rows);renderXPrep(rows);renderXHeat();renderXBrowse(rows);
 }
 function debCardHTML(d){
   const top=(d.strat||[]).slice(0,3).map(s=>{const{sec,label}=parseStrat(s);
@@ -1008,104 +1364,7 @@ function debCardHTML(d){
     ${meta.length?`<div class="cmeta">${meta.join('')}</div>`:''}
   </button>`;
 }
-function renderRecoCards(rows,b){
-  const scored=bestExamples(rows,6);
-  document.getElementById('cardSub').textContent=`Six detailed ${b.label} stories selected for tactics, section notes, replies, prep/gain context, and named resources. Optional reading when you want proof behind the plan.`;
-  document.getElementById('recoCards').innerHTML=scored.map(debCardHTML).join('');
-}
-
-/* ---------- patterns ---------- */
-function renderPatterns(){
-  const b=bandOf(state.band),rows=debsIn(b);
-  const pts=[];for(let s=655;s<=805;s+=10)pts.push(s);
-  const cnt={};DEB.forEach(d=>{if(d.total!=null)cnt[d.total]=(cnt[d.total]||0)+1;});
-  const max=Math.max(...pts.map(s=>cnt[s]||0),1);
-  const compact=window.innerWidth<520;
-  const W=compact?340:940,H=compact?300:340,padX=compact?16:28,padT=compact?30:34,padB=compact?40:46;
-  const base=H-padB,plotH=H-padT-padB,step=(W-padX*2)/pts.length,bw=Math.min(compact?17:38,step*.72);
-  const bars=pts.map((s,i)=>{
-    const n=cnt[s]||0,inb=s>=b.lo&&s<=b.hi,h=n?Math.max(6,Math.round(n/max*plotH)):0;
-    const x=padX+i*step+(step-bw)/2,y=base-h,show=(s%20===5)||s===805;
-    return `<rect class="dbar ${inb?'inband':'all'}" x="${x.toFixed(1)}" y="${y}" width="${bw.toFixed(1)}" height="${h}" rx="7">
-      <title>${s}: ${n} debriefs</title></rect>
-      ${n>=(compact?20:10)?`<text class="dcount" x="${(x+bw/2).toFixed(1)}" y="${Math.max(15,y-8)}" text-anchor="middle">${n}</text>`:''}
-      ${show?`<text class="dlabel ${inb?'inband':''}" x="${(x+bw/2).toFixed(1)}" y="${H-14}" text-anchor="middle">${s}</text>`:''}`;
-  }).join('');
-  document.getElementById('dist').innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Score distribution histogram">
-    <defs><linearGradient id="distGrad" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#7c5cf0"/><stop offset="1" stop-color="#5b5bd6"/></linearGradient></defs>
-    <line class="dbase" x1="${padX}" x2="${W-padX}" y1="${base}" y2="${base}"/>${bars}</svg>`;
-  const mode=pts.reduce((a,s)=>(cnt[s]||0)>(cnt[a]||0)?s:a,655);
-  document.getElementById('distSub').textContent=`All __NDEB__ debriefs by official total score. The busiest score is ${mode}; your selected band is highlighted.`;
-  document.getElementById('distKey').textContent=`Your range, ${b.label}`;
-
-  const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
-  const slo=55,shi=90,sscale=v=>Math.max(2,Math.min(100,Math.round(100*(v-slo)/(shi-slo))));
-  const complete=rows.filter(d=>d.q!=null&&d.v!=null&&d.di!=null);
-  document.getElementById('splitSub').innerHTML=`Median section scores among <b>${complete.length}</b> ${b.label} debriefs with complete Q/V/DI splits.`;
-  const med=sectionMedians(rows),weak=weakestSection(rows);
-  document.getElementById('splitViz').innerHTML=[['q','Quant'],['v','Verbal'],['di','Data Insights']].map(([k,name])=>{
-    const m=med[k]!=null?Math.round(med[k]):null;
-    if(m==null)return '';
-    return `<div class="cmp"><div class="cl">${name}</div>
-      <div class="ctrack"><div class="cbar" style="--w:${sscale(m)}%;background:${cm[k]}"></div></div>
-      <div class="cscore" style="color:${cm[k]}">${m}</div></div>`;}).join('');
-  document.getElementById('splitCall').innerHTML=weak
-    ?`<b>${weak.name}</b> is the lowest median split in this range. Use that as a diagnostic prompt, then compare against the examples.`
-    :`Not enough complete section splits to name a bottleneck confidently.`;
-
-  const top=topResources(rows,4),mx=top.length?top[0][1]:1;
-  document.getElementById('resSub2').innerHTML=`Most-named resources among <b>${rows.length}</b> ${b.label} scorers. Popularity only, not proof of effectiveness.`;
-  document.getElementById('resBars').innerHTML=top.map(([r,n])=>{const pct=Math.round(100*n/rows.length);
-    return `<div class="barrow"><div class="blabel"><span class="bname"><span class="txt">${esc(r)}</span></span><span class="bpct">${pct}%</span></div>
-      <div class="bartrack"><div class="barfill" style="--w:${Math.round(100*n/mx)}%"></div></div></div>`;}).join('');
-  const rb=document.getElementById('resExamples');
-  rb.onclick=()=>{track('insight_open',{kind:'resource',band:b.label});handleAction('resource');};
-
-  const prep=rows.map(d=>d.prep_weeks).filter(x=>x!=null),gains=rows.map(d=>d.gain).filter(x=>x!=null);
-  const attempts=rows.map(d=>d.attempts).filter(x=>x!=null),self=rows.filter(d=>(d.tags||[]).includes('Self Study')).length;
-  document.getElementById('prepSub').innerHTML=`Only some debriefs report prep length or start score, so this panel is context rather than a target.`;
-  document.getElementById('prepGain').innerHTML=[
-    ['Median prep',prep.length?fmt(median(prep))+'w':'—',prep.length],
-    ['Median gain',gains.length?'+'+fmt(median(gains)):'—',gains.length],
-    ['Median attempts',attempts.length?fmt(median(attempts)):'—',attempts.length],
-    ['Self-study flag',self?pct(self,rows.length)+'%':'—',rows.length],
-  ].map(([l,n,s])=>`<div class="ministat"><div class="n">${n}</div><div class="l">${l}<br><span style="color:var(--ink-3);font-weight:650">n=${s}</span></div></div>`).join('');
-  document.getElementById('prepCall').innerHTML=`Use these as planning bounds: <b>${prep.length}</b> posts state prep time and <b>${gains.length}</b> state a start-to-official score gain.`;
-
-  const candidates=[
-    ...topStrats(rows,'Q',2).map(x=>({sec:'Q',label:x[0]})),
-    ...topStrats(rows,'V',2).map(x=>({sec:'V',label:x[0]})),
-    ...topStrats(rows,'DI',2).map(x=>({sec:'DI',label:x[0]})),
-    ...topStrats(rows,'G',2).map(x=>({sec:'G',label:x[0]})),
-  ].filter((x,i,a)=>a.findIndex(y=>y.sec===x.sec&&y.label===x.label)===i).slice(0,4);
-  document.getElementById('heatSub').innerHTML=`Share of each score band mentioning repeated tactics. Tap a cell for examples.`;
-  const cells=[];
-  cells.push('<div class="hmhead"></div>');
-  BANDS.forEach(bd=>cells.push(`<div class="hmhead">${bd.label.replace(' – ','-')}</div>`));
-  candidates.forEach(item=>{
-    cells.push(`<div class="hmlabel">${esc(item.label)}</div>`);
-    BANDS.forEach(bd=>{
-      const br=debsIn(bd),pool=rowsForStrat(br,item.sec,item.label),p=pct(pool.length,br.length),a=Math.max(.08,Math.min(.56,p/100*.9));
-      cells.push(`<div class="hmcell" style="--a:${a.toFixed(2)}"><button type="button" onclick='openHeatCohort(${JSON.stringify(item.sec)},${JSON.stringify(item.label)},${JSON.stringify(bd.key)})'>${p}%</button></div>`);
-    });
-  });
-  document.getElementById('tacticHeat').innerHTML=cells.join('');
-  observeGrow();
-}
-
-/* ---------- browse all ---------- */
-function renderBrowse(){
-  const q=(document.getElementById('q').value||'').toLowerCase().trim();
-  const fb=document.getElementById('fBand').value, fs=document.getElementById('fSrc').value;
-  let rows=DEB.slice();
-  if(fb){const b=bandOf(fb);rows=rows.filter(d=>inBand(d,b));}
-  if(fs)rows=rows.filter(d=>d.source===fs);
-  if(q)rows=rows.filter(d=>(d.title+' '+(d.strat||[]).join(' ')+' '+(d.resources||[]).join(' ')).toLowerCase().includes(q));
-  rows.sort((a,b)=>b.total-a.total);
-  const list=document.getElementById('browseList');
-  document.getElementById('browseEmpty').classList.toggle('hidden',rows.length>0);
-  list.innerHTML=rows.slice(0,60).map(debCardHTML).join('');
-}
+/* legacy band-scoped explore renderers removed in v19.2 (see EXPLORE THE DATA + plan analytics) */
 
 /* ---------- cohort proof drawer ---------- */
 function openCohort(title,sub,rows,meta){
@@ -1237,7 +1496,7 @@ function doClose(){
 /* ---------- views + routing ---------- */
 function initExplore(){
   if(exploreInit)return;exploreInit=true;
-  renderBands();initFilters();renderResults();renderPatterns();renderBrowse();observeGrow();
+  renderFilterBar();renderExplore();
 }
 function showView(v){
   document.getElementById('view-plan').classList.toggle('hidden',v!=='plan');
@@ -1254,17 +1513,19 @@ function showView(v){
 function goHome(e){if(e)e.preventDefault();if(document.getElementById('detail').classList.contains('on'))doClose();
   if(document.getElementById('cohort').classList.contains('on'))closeCohort();
   history.pushState({},'', '?');showView('plan');scrollTo(0,0);}
-function jumpBrowse(){const t=document.getElementById('browse');
-  scrollTo({top:t.getBoundingClientRect().top+scrollY-70,behavior:RM?'auto':'smooth'});}
-function jumpEvidence(){const t=document.getElementById('evidence');
-  scrollTo({top:t.getBoundingClientRect().top+scrollY-70,behavior:RM?'auto':'smooth'});}
+/* re-render explore charts when crossing the compact breakpoint on resize/rotate */
+let _rsz;
+window.addEventListener('resize',()=>{clearTimeout(_rsz);_rsz=setTimeout(()=>{
+  if(exploreInit&&!document.getElementById('view-explore').classList.contains('hidden'))renderExplore();
+  if(planAnalyticsShown())renderPlanAnalytics();
+},220);});
 
 window.addEventListener('popstate',e=>{
   const s=e.state||{};
   if(s.d){openDebrief(s.d,false);}
   else{doClose();
     const p=new URLSearchParams(location.search);
-    if(p.get('band')){const b=BANDS.find(x=>String(x.lo)===p.get('band'));if(b){state.band=b.key;showView('explore');}}
+    if(p.get('band')){const b=BANDS.find(x=>String(x.lo)===p.get('band'));if(b){const w=exploreInit;xf.bands=new Set([b.key]);showView('explore');if(w){renderFilterBar();renderExplore();}}}
     else if(!p.get('p')){showView('plan');}
   }
 });
@@ -1283,14 +1544,6 @@ function observeGrow(root){
 }
 
 /* ---------- init ---------- */
-function initFilters(){
-  document.getElementById('fBand').innerHTML='<option value="">All scores</option>'+
-    BANDS.map(b=>`<option value="${b.key}">${b.label}</option>`).join('');
-  const srcs=[...new Set(DEB.map(d=>d.source))].sort();
-  document.getElementById('fSrc').innerHTML='<option value="">All sources</option>'+
-    srcs.map(s=>`<option>${esc(s)}</option>`).join('');
-  ['q','fBand','fSrc'].forEach(id=>document.getElementById(id).addEventListener('input',renderBrowse));
-}
 (function init(){
   const p=new URLSearchParams(location.search);
   let startView='plan';
@@ -1306,7 +1559,7 @@ function initFilters(){
   }
   if(p.get('band')){
     const b=BANDS.find(x=>String(x.lo)===p.get('band'));
-    if(b){state.band=b.key;startView='explore';}
+    if(b){state.band=b.key;xf.bands.add(b.key);startView='explore';}
   }
   showView(startView);
   const did=p.get('d');

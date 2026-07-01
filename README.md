@@ -1,72 +1,69 @@
-# PrepSignals — GMAT personalized-plan dashboard v.19
+# PrepSignals — GMAT dashboard v.19.2
 
-v.19 is a Phase 1 UX rebuild aimed at the ~70% bounce rate on v.18.1. It stops
-pre-rendering the full analytics dashboard on load and replaces it with a
-3-question intake that builds a personalized plan against a matched peer
-cohort. No login anywhere — personalization is entirely client-side.
+v.19.2 brings back the **data-insights depth of v.16** — the chart-heavy
+analytics dashboard — but rebuilt in the v.19 UI, and reorganises the two
+tabs into a clearer split:
 
-## What changed vs v.18.1
+- **Your plan** — the personalized surface. Now *fuses in* the band-scoped
+  analytics that used to live on the Explore tab, plus a new **score-band
+  insights** panel.
+- **Explore the data** — rebuilt as a **global, filterable charts dashboard**
+  over every debrief (the old Explore band-picker is gone; its per-band
+  analytics moved into Your plan).
 
-- **New landing flow.** The homepage no longer dumps the whole band-scoped
-  dashboard at once. It shows one hero + a 3-question intake (current score /
-  target band / weeks to test) with a single "Build my plan" CTA.
-- **Peer-matched personalization.** On submit, the plan is built from debriefs
-  that both *started* near the user's current-score bucket and *reached* the
-  target band (`peersFor()`), not just the target band as a whole. If fewer
-  than 6 exact matches exist, it falls back to the full band with an honest
-  "band-wide" disclaimer — never silently thins the sample without saying so.
-- **Pacing callout.** Compares the user's stated timeline against the matched
-  cohort's median prep time and surfaces a tight/typical/long-runway note.
-- **Two-mode nav.** "Your plan" (personalized, default) vs "Explore the data"
-  (the old v.18.1 band-picker dashboard, unchanged, for the analytically
-  curious) vs "About". The Explore tab reuses the exact same rendering engine
-  as v.18.1 (bands, histogram, section split, resource bars, tactic heatmap,
-  browse-all) — no analytics were removed, just moved off the critical path.
-- **No accounts.** The three intake answers are saved to `localStorage`
-  (`ps_plan_v1`) so a return visit skips straight to the plan. Nothing is
-  sent to a server.
+Everything is hand-rolled SVG/CSS themed to the v.19 design system — no chart
+library, no CDN, no backend. Same 330 debriefs and same data files as v.19.
+
+## Your plan tab (fused + personalized)
+
+After the 3-question intake (current score / target band / weeks to test),
+keyed to the matched peer cohort and the target band:
+
+- **The jump you're planning** — a score-band panel framing
+  `current bucket → target band`: what share of debriefs that *started* in
+  your range reached your target, and the typical `start → total (+gain)`
+  path and prep time in your cohort.
+- **Action cards** and **per-section insights** (peer-matched) — unchanged.
+- **"Inside the &lt;band&gt; range"** — the deep-dive analytics, now inline:
+  - **Where scores land** — score histogram with your target band highlighted.
+  - **Typical section split** — median Q / V / DI, with the weakest called out.
+  - **What they studied with** — most-named resources.
+  - **Prep & gain context** — median prep, gain, attempts, self-study share.
+  - **Tactic adoption by band** — a tap-through heatmap.
+
+## Explore the data tab (global charts)
+
+A filter toolbar (**score band chips · source · resource · self-study only**)
+drives a live stat row and eight charts over the filtered set:
+
+1. **Score distribution** — histogram (selected bands highlighted).
+2. **Where each tier is weakest** — grouped bars, median Q/V/DI per band.
+3. **How big a jump is realistic?** — point-gain distribution.
+4. **Most-used resources** — horizontal bars.
+5. **Prep time vs score gain** — scatter with a least-squares trendline.
+6. **Does more prep time help?** — median total score by prep-duration bucket.
+7. **Tactic adoption by score band** — tap-through heatmap.
+8. **Browse the filtered debriefs** — card grid with "show more".
+
+## Hand-rolled chart primitives
+
+New reusable SVG builders (in the `SVG CHART PRIMITIVES` block): `svgVBars`,
+`svgGroupedBars`, `svgScatter`, `svgHist`, `hBarsHTML`, plus `niceTicks` and a
+`paint()` helper that re-runs the grow-in animation on each render. Every
+chart has a compact `<520px` variant; the whole surface collapses cleanly at
+the 760px breakpoint. Aggregation stays 100% client-side.
+
+New Python bucket definitions passed as tokens: `__GAINB__` (point-gain
+buckets) and `__PREPB__` (prep-duration buckets).
 
 ## Rebuild
 
 From this folder:
 
 ```bash
-python3 build_v19.py
+python3 build_v19_2.py
 ```
 
-Writes `dashboard_v19.html`. The page is static and self-contained; it reads
-the local `debriefs.json` and `post_details.json` at build time (unchanged
-from v.18.1 — same 330 debriefs after the Debrief-tag filter).
-
-## Deep links
-
-- `?p=<cur>-<tgt>-<wk>` opens a specific personalized plan directly, e.g.
-  `?p=c2-b2-w2` (605–654 → 705–745, 4–7 weeks). Submitting the intake also
-  writes this URL and saves it to localStorage.
-- `?band=<low>` opens the Explore tab pre-scoped to a band (v.18.1-compatible).
-- `?d=<post_id>` opens a specific debrief detail page, from either tab.
-
-## Analytics events
-
-Carried over from v.18.1: `band_select`, `debrief_open`, `origin_click`,
-`about_open`, `action_click`, `insight_open`, `cohort_open`.
-
-New in v.19: `intake_submit` (cur/tgt/wk), `intake_edit`, `plan_view`
-(cur/tgt/wk/matched/sample), `plan_action_click` (kind/band).
-
-## Data notes
-
-The underlying data pipeline is unchanged: same 330 debriefs (post
-Debrief-tag filter, 367 raw records), same `debriefs.json`, same
-`post_details.json`. The current-score buckets and weeks-to-test buckets are
-tuned to the real `start_score` (375–715, median 595) and `prep_weeks`
-(1–157, median 9) distributions. `MIN_PEERS = 6` is the floor before the
-"closest matches" plan falls back to the full band.
-
-## Known gaps (not yet addressed — future phases)
-
-- No account/sync layer, so the plan doesn't follow a user across devices.
-  Deliberately deferred until Phase 1 shows people actually return.
-- `popstate` (browser back/forward) restores detail/cohort overlays and
-  Explore-tab band state, but does not fully restore Your-Plan intake state —
-  a minor gap versus full SPA history handling, acceptable for a prototype.
+Writes `dashboard_v19_2.html`. Same data notes, deep links
+(`?p=` / `?band=` / `?d=`), privacy model, and analytics events as v.19 —
+see `../v.19/README.md`.
