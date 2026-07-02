@@ -30,40 +30,38 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
   posthog.init('phc_CtkjhRN3pZtZEcSMP3YXisKBJbwKenPngJd8tLLmwWbu',{api_host:'https://us.i.posthog.com',defaults:'2025-05-24'});
 })();
 </script>
-<link rel="stylesheet" href="/app.css?v=202607021904">
-<script src="/data.js?v=202607021904" defer></script>
+<link rel="stylesheet" href="/app.css?v=202607022338">
+<script src="/data.js?v=202607022338" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-<script src="/app.js?v=202607021904" defer></script>
+<script src="/app.js?v=202607022338" defer></script>
 </head>
 <body>
 <header class="bar"><div class="wrap">
   <a class="logo" href="/path" data-nav>Prep<b>Signals</b><span class="dot"></span></a>
-  <nav class="nav">
+  <nav class="nav" aria-label="Primary navigation">
     <a id="nav-path" href="/path" data-nav class="on"><span class="navfull">My Score Path</span><span class="navshort">Path</span></a>
     <a id="nav-explore" href="/explore" data-nav><span class="navfull">Explore the data</span><span class="navshort">Explore</span></a>
     <a id="nav-about" href="/about" data-nav>About</a>
-    <a id="nav-me" href="/me" data-nav class="menav" aria-label="Me — saved plan, debriefs and progress">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>
-      <span class="navfull">Me</span></a>
     <a id="nav-admin" href="/admin" data-nav class="hidden">Admin</a>
     <span id="navAuth" class="navauth"></span>
   </nav>
 </div></header>
 
-<main id="view-path">
+<main id="view-path" aria-hidden="false">
   <div class="wrap">
     <section class="hero">
       <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
       <span class="eyebrow"><span class="pulse"></span>330 real GMAT debriefs</span>
       <h1>Your <em>score path</em>, from people who already made the jump</h1>
       <p class="lede">Four quick taps. We match you with real stories from people who started where you are and hit your target — then turn them into a plan.</p>
+      <p class="microlede">Browse free. Create an account only when you want to save.</p>
     </section>
     <div class="quiz" id="quiz"></div>
     <div id="planResult"></div>
   </div>
 </main>
 
-<main id="view-explore" class="hidden">
+<main id="view-explore" class="hidden" hidden aria-hidden="true" inert>
   <div class="wrap">
     <section class="hero" style="padding:44px 0 4px">
       <span class="blob b1"></span><span class="blob b2"></span>
@@ -175,15 +173,15 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
   </div>
 </main>
 
-<main id="view-me" class="hidden">
+<main id="view-me" class="hidden" hidden aria-hidden="true" inert>
   <div class="wrap" id="meBody"></div>
 </main>
 
-<main id="view-admin" class="hidden">
+<main id="view-admin" class="hidden" hidden aria-hidden="true" inert>
   <div class="wrap" id="adminBody"></div>
 </main>
 
-<section id="view-about" class="hidden"><div class="wrap about" style="padding-top:42px;padding-bottom:42px">
+<section id="view-about" class="hidden" hidden aria-hidden="true" inert><div class="wrap about" style="padding-top:42px;padding-bottom:42px">
   <h2>About PrepSignals</h2>
   <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Answer four quick questions on My Score Path, or pick a score range under Explore the Data to see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
   <h3>Where the data comes from</h3>
@@ -193,7 +191,7 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
   <h3>How to read the colors</h3>
   <p>Colors mean the same thing everywhere on the site: <b>blue</b> is Quant, <b>purple</b> is Verbal, <b>teal</b> is Data Insights, <b>amber</b> is resources, <b>green</b> is timing and test-day execution, and <b>coral</b> is score gains.</p>
   <h3>Accounts &amp; privacy</h3>
-  <p>You can use most of PrepSignals without an account: browsing debriefs, Explore, and building a score path all work anonymously, and anonymous activity stays in your own browser. A free account is needed to <b>save</b> things — debriefs, your checklist, and your progress log — so they can sync across devices. If you sign up, your name, email, and saved study data are stored securely with our database provider (Supabase); your password is stored only as a salted hash, and we verify your email before any data syncs.</p>
+  <p>You can use most of PrepSignals without an account: browsing debriefs, Explore, and building a score path all work anonymously, and anonymous activity stays in your own browser. A free account is needed to <b>save</b> things — debriefs, your checklist, and your progress log — so they can sync across devices. If you sign up, your name, email, and saved study data are stored securely with our database provider (Supabase). We never store your plain-text password; authentication is handled by Supabase.</p>
   <p>We use Vercel's privacy-friendly aggregate analytics and PostHog product analytics to understand which pages and features are useful. We never sell your data, and marketing email is strictly opt-in. Full details: <a href="/privacy" data-nav>Privacy Policy</a> · <a href="/terms" data-nav>Terms of Service</a>.</p>
   <h3>Feedback</h3>
   <p>If you want to see more features, notice something wrong, or have feedback, please email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
@@ -201,7 +199,7 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
   <p style="margin-top:18px;color:var(--ink-3)">Data spans 2023-11-13 to 2026-06-24.</p>
 </div></section>
 
-<section id="view-terms" class="hidden"><div class="wrap about legal" style="padding-top:42px;padding-bottom:42px">
+<section id="view-terms" class="hidden" hidden aria-hidden="true" inert><div class="wrap about legal" style="padding-top:42px;padding-bottom:42px">
   <h2>Terms of Service</h2>
   <p class="legaldate">Effective date: July 2, 2026</p>
   <p>Welcome to PrepSignals ("PrepSignals", "we", "us"). By using prepsignals.vercel.app (the "Service") you agree to these Terms. If you don't agree, please don't use the Service.</p>
@@ -225,24 +223,24 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
   <p>Questions about these Terms: <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
 </div></section>
 
-<section id="view-privacy" class="hidden"><div class="wrap about legal" style="padding-top:42px;padding-bottom:42px">
+<section id="view-privacy" class="hidden" hidden aria-hidden="true" inert><div class="wrap about legal" style="padding-top:42px;padding-bottom:42px">
   <h2>Privacy Policy</h2>
   <p class="legaldate">Effective date: July 2, 2026</p>
   <p>This policy explains what PrepSignals collects, why, and what control you have. The short version: anonymous use stays in your browser; an account stores your study data server-side so it can sync; analytics are aggregate; marketing email is opt-in; we never sell your data.</p>
   <h3>1. What we collect — without an account</h3>
   <p>Nothing that identifies you. Your four score-path answers live in this browser only. We collect aggregate usage analytics (see section 4) about which pages and features are used.</p>
   <h3>2. What we collect — with an account</h3>
-  <p>When you sign up we collect your <b>name</b>, <b>email address</b>, and <b>password</b> (stored only as a salted hash by our authentication provider — we never see it). If you choose to provide them, we also store your target score, test month, main weak area, and prep stage, so the Service can personalise recommendations. Your saved study data — score path, saved debriefs, checklist, and progress log — is stored in our database so it syncs across your devices. We record whether you opted in to marketing email and which Terms version you accepted.</p>
+  <p>When you sign up we collect your <b>name</b>, <b>email address</b>, and <b>password</b>. We never store your plain-text password; authentication is handled by Supabase. If you choose to provide them, we also store your target score, test month, main weak area, and prep stage, so the Service can personalise recommendations. Your saved study data — score path, saved debriefs, checklist, and progress log — is stored in our database so it syncs across your devices. We record whether you opted in to marketing email and which Terms version you accepted.</p>
   <h3>3. Where it's stored</h3>
   <p>Account data is stored with <b>Supabase</b> (our authentication and database provider) and protected by row-level security: your data is readable only by you and by PrepSignals administration. The site is hosted on <b>Vercel</b>.</p>
   <h3>4. Analytics</h3>
   <p>We use <b>Vercel Analytics</b> (aggregate, cookie-free page analytics) and <b>PostHog</b> (product analytics: which features are used, where people drop off). Anonymous visitors are not personally identified. If you log in, your product-analytics events are associated with your account so we can understand and improve the logged-in experience. We do not run third-party advertising trackers.</p>
   <h3>5. Email</h3>
-  <p>We send transactional email you can't opt out of while you have an account (email verification, password reset). Marketing email — prep discounts, product updates, study tips — is sent <b>only if you opted in</b>, and every message includes an unsubscribe link. You can change the marketing setting anytime under Me → Account.</p>
+  <p>We send transactional email you can't opt out of while you have an account (email verification, password reset). Marketing email — prep discounts, product updates, study tips — is sent <b>only if you opted in</b>, and every message includes an unsubscribe link. You can change the marketing setting anytime under Workspace → Account.</p>
   <h3>6. Cookies and local storage</h3>
   <p>We use browser local storage to keep you signed in and to cache your study data on your device. We don't use advertising cookies.</p>
   <h3>7. Your rights</h3>
-  <p>You can view and edit your profile under Me → Account. You can delete your account there too — deletion removes your profile and all saved study data from our database. You can also email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a> to request a copy or deletion of your data, and we'll respond within 30 days.</p>
+  <p>You can view and edit your profile under Workspace → Account. You can delete your account there too — deletion removes your profile and all saved study data from our database. You can also email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a> to request a copy or deletion of your data, and we'll respond within 30 days.</p>
   <h3>8. Children</h3>
   <p>PrepSignals is not directed at children under 16, and we don't knowingly collect their data.</p>
   <h3>9. Changes</h3>
@@ -285,7 +283,7 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
 
 <footer><div class="wrap">
   <span>PrepSignals — independent GMAT debrief signal. Not affiliated with GMAC.</span>
-  <span><a href="/about" data-nav>About &amp; sources</a> · <a href="/terms" data-nav>Terms</a> · <a href="/privacy" data-nav>Privacy</a> · <a href="/me" data-nav>Me</a></span>
+  <span><a href="/about" data-nav>About &amp; sources</a> · <a href="/terms" data-nav>Terms</a> · <a href="/privacy" data-nav>Privacy</a> · <a href="/me" data-nav>Account</a></span>
 </div></footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

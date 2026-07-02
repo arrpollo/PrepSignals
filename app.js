@@ -639,7 +639,7 @@ function renderChecklist(peers){
     <span class="txt">${t}</span></button>`).join('');
 }
 function toggleCheck(i){
-  if(!requireAuth('checklist','Sign up to keep your checklist','Week-one ticks save to your free account and follow you across devices.'))return;
+  if(!requireAuth('checklist','Create account to save checklist','Keep checklist progress synced across devices.'))return;
   const done=loadChecks();done[i]=!done[i];saveChecks(done);renderChecklist();
   try{cloudSaveChecks();}catch(e){}
   track('check_toggle',{i,on:!!done[i]});
@@ -1270,7 +1270,7 @@ function routeTitle(r){
   if(r.view==='terms')return 'Terms of Service — PrepSignals';
   if(r.view==='privacy')return 'Privacy Policy — PrepSignals';
   if(r.view==='admin')return 'Admin — PrepSignals';
-  if(r.view==='me')return r.meSub==='progress'?'Progress log — PrepSignals':r.meSub==='saved'?'Saved debriefs — PrepSignals':'Me — PrepSignals';
+  if(r.view==='me')return r.meSub==='progress'?'Progress log — PrepSignals':r.meSub==='saved'?'Saved debriefs — PrepSignals':'Workspace — PrepSignals';
   if(r.plan){const c=curBucketOf(r.plan.cur),b=bandOf(r.plan.tgt);
     if(c&&b)return c.label+' → '+b.label+' score path — PrepSignals';}
   return 'PrepSignals — your personal GMAT score plan';
@@ -1357,7 +1357,14 @@ const VIEWS=['path','explore','me','about','terms','privacy','admin'];
 function showView(v){
   currentView=v;
   VIEWS.forEach(k=>{
-    const el=document.getElementById('view-'+k);if(el)el.classList.toggle('hidden',k!==v);
+    const el=document.getElementById('view-'+k);
+    if(el){
+      const active=k===v;
+      el.classList.toggle('hidden',!active);
+      el.hidden=!active;
+      el.setAttribute('aria-hidden',active?'false':'true');
+      if(active)el.removeAttribute('inert');else el.setAttribute('inert','');
+    }
     const nb=document.getElementById('nav-'+k);if(nb)nb.classList.toggle('on',k===v);
   });
   if(v==='explore')initExplore();
@@ -1387,7 +1394,7 @@ document.addEventListener('keydown',e=>{
   else if(document.getElementById('cohort').classList.contains('on'))closeCohort();
 });
 
-/* ================= ME — local-first library (no account required) ================= */
+/* ================= WORKSPACE — local-first library (no account required) ================= */
 const LS_SAVED='ps_saved_v1',LS_PROG='ps_progress_v1';
 let _toastT;
 function toast(msg){
@@ -1400,7 +1407,7 @@ function loadSaved(){try{const a=JSON.parse(localStorage.getItem(LS_SAVED));
 function saveSaved(a){try{localStorage.setItem(LS_SAVED,JSON.stringify(a));}catch(e){}}
 function isSaved(id){return loadSaved().includes(id);}
 function toggleSave(id){
-  if(!requireAuth('save_debrief','Create a free account to save debriefs','Build a reading list that syncs across your devices — this debrief gets saved right after you sign in.',{saveId:id}))return;
+  if(!requireAuth('save_debrief','Create account to save debriefs','Save this debrief to a synced reading list.',{saveId:id}))return;
   let a=loadSaved();const was=a.includes(id);
   a=was?a.filter(x=>x!==id):[id].concat(a);
   saveSaved(a);
@@ -1408,7 +1415,7 @@ function toggleSave(id){
   const btn=document.getElementById('saveBtn-'+id);
   if(btn){btn.classList.toggle('on',!was);const sp=btn.querySelector('span');if(sp)sp.textContent=was?'Save':'Saved';}
   if(currentView==='me'&&currentMeSub==='saved')renderMe('saved');
-  toast(was?'Removed from your saved debriefs':(typeof cloudOK==='function'&&cloudOK()?'Saved to your account — find it under Me → Saved':'Saved — find it under Me → Saved'));
+  toast(was?'Removed from your saved debriefs':(typeof cloudOK==='function'&&cloudOK()?'Saved to your account — find it in Workspace':'Saved — find it in Workspace'));
   track('save_toggle',{id,on:!was});
 }
 function unsaveFromList(id){toggleSave(id);}
@@ -1416,7 +1423,7 @@ function loadProg(){try{const a=JSON.parse(localStorage.getItem(LS_PROG));
   return Array.isArray(a)?a.filter(x=>x&&x.total):[];}catch(e){return [];}}
 function saveProg(a){try{localStorage.setItem(LS_PROG,JSON.stringify(a));}catch(e){}}
 function addProgress(){
-  if(!requireAuth('progress','Create an account to track scores over time','Log mocks and official scores — your trend line saves to your account and syncs across devices.'))return;
+  if(!requireAuth('progress','Create account to save scores','Log mocks and official scores across devices.'))return;
   const g=id=>document.getElementById(id);
   const total=parseInt(g('pgTotal').value,10);
   if(!(total>=205&&total<=805)){toast('Total score should be between 205 and 805');return;}
@@ -1465,7 +1472,7 @@ function meHomeHTML(){
     ?`<a class="mecard rise" href="${planPath()}" data-nav style="--mc:var(--green);--mcl:var(--green-l)">
         <span class="k">First week</span>
         <h3>${done} of 4 done</h3>
-        <p>Your week-one checklist, built from what worked for people on your path. Ticks save on this device.</p>
+        <p>Your week-one checklist, built from what worked for people on your path. Progress stays synced.</p>
         <span class="foot">Open the checklist ${ARROW_SM}</span></a>`
     :`<a class="mecard rise" href="/path" data-nav style="--mc:var(--green);--mcl:var(--green-l)">
         <span class="k">First week</span>
@@ -1482,8 +1489,9 @@ function meHomeHTML(){
         <h3>${last?last.total+' · '+fmtDate(last.date):'No scores logged'}</h3>
         <p>${prog.length?prog.length+(prog.length===1?' entry':' entries')+' — log every mock to see your trend.':'Log your mocks and official scores to watch the line move.'}</p>
         <span class="foot">${prog.length?'Open the log':'Log a score'} ${ARROW_SM}</span></a>`;
-  return `<section class="mehead"><h1>Me</h1>
-      <p>${meHeadSub()}</p></section>
+  const avatar=(typeof isLoggedIn==='function'&&isLoggedIn()&&typeof accountInitial==='function')?`<span class="meavatar" aria-hidden="true">${esc(accountInitial())}</span>`:'';
+  return `<section class="mehead"><div class="mehero">${avatar}<div><h1>Workspace</h1>
+      <p>${meHeadSub()}</p></div></div></section>
     ${mePrepStageHTML()}
     <div class="megrid">${planCard}${checkCard}${savedCard}${progCard}</div>
     ${meRecsHTML()}
@@ -1501,7 +1509,7 @@ function meSavedHTML(){
     return `<div class="savedcell rise">${debCardHTML(d)}
       <button class="unsave" onclick="unsaveFromList('${id}')" aria-label="Remove from saved">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;}).join('');
-  return `<a class="mecrumb" href="/me" data-nav>← Me</a>
+  return `<a class="mecrumb" href="/me" data-nav>← Workspace</a>
     <section class="mehead" style="padding-top:18px"><h1>Saved debriefs</h1>
       <p>Debriefs you bookmarked to revisit${(typeof cloudOK==='function'&&cloudOK())?' — synced to your account':''}.</p></section>
     ${planRow}
@@ -1530,7 +1538,7 @@ function meProgressHTML(){
       :lastT>b.hi?`Latest score <b>${lastT}</b> — above your ${esc(b.label)} target band. Time to raise the target?`
       :`Latest score <b>${lastT}</b> — inside your ${esc(b.label)} target band. Hold your level.`}</span></div>`;
   }
-  return `<a class="mecrumb" href="/me" data-nav>← Me</a>
+  return `<a class="mecrumb" href="/me" data-nav>← Workspace</a>
     <section class="mehead" style="padding-top:18px"><h1>Progress log</h1>
       <p>Log every mock and official score. The trend matters more than any single number.</p></section>
     <div class="panel" style="margin-top:16px">
@@ -1613,8 +1621,8 @@ function observeGrow(root){
 })();
 
 'use strict';
-/* ================= v.20.1 AUTH — Supabase accounts, sync, save-gating =================
-   Concatenated after app.js by build_v201.py. Everything here uses `var` +
+/* ================= v.20.2 AUTH — Supabase accounts, sync, save-gating =================
+   Concatenated after app.js by build_v202.py. Everything here uses `var` +
    function declarations on purpose: app.js boots (applyRoute) before this
    section's top-level statements run, so TDZ-free globals keep the first
    render safe. All UI re-renders once auth state resolves. */
@@ -1636,7 +1644,11 @@ function accountsOn(){return !!sbClient;}
 function isLoggedIn(){return !!authUser;}
 function emailVerified(){return !!(authUser&&authUser.email_confirmed_at);}
 function isAdmin(){return !!(authProfile&&authProfile.role==='admin');}
-function authName(){return (authUser&&((authUser.user_metadata||{}).name||authUser.email))||'';}
+function authName(){return (authProfile&&authProfile.name)||(authUser&&((authUser.user_metadata||{}).name||authUser.email))||'';}
+function accountInitial(){
+  var n=(authName()||authUser&&authUser.email||'?').trim();
+  return (n.charAt(0)||'?').toUpperCase();
+}
 
 /* ---------- boot ---------- */
 function initAuthClient(){
@@ -1816,10 +1828,10 @@ function renderNavAuth(){
   var el=document.getElementById('navAuth');if(!el)return;
   if(!accountsOn()){el.innerHTML='';return;}
   if(isLoggedIn()){
-    var n=authName(),init=(n||'?').trim().charAt(0).toUpperCase();
-    el.innerHTML='<a class="userchip'+(emailVerified()?'':' unverified')+'" href="/me" data-nav title="'+esc(n)+(emailVerified()?'':' — email not verified yet')+'" aria-label="Your account">'+esc(init)+'</a>';
+    var n=authName(),init=accountInitial();
+    el.innerHTML='<a class="userchip'+(emailVerified()?'':' unverified')+'" href="/me" data-nav title="'+esc(n)+(emailVerified()?'':' — email not verified yet')+'" aria-label="Account">'+esc(init)+'</a>';
   }else{
-    el.innerHTML='<button type="button" class="loginbtn" onclick="openAuth(\'login\',\'nav\')">Log in</button>';
+    el.innerHTML='<button type="button" class="loginbtn" onclick="openAuth(\'login\',\'nav\')" aria-label="Log in or create account">Log in</button>';
   }
 }
 function updateAdminNav(){
@@ -1868,9 +1880,73 @@ function authErr(msg){
   var e=document.getElementById('authErr');
   if(e){e.textContent=msg;e.classList.remove('hidden');}
 }
+function authClearError(){
+  var e=document.getElementById('authErr');
+  if(e){e.textContent='';e.classList.add('hidden');}
+}
+function authFieldName(id){
+  return {auName:'Name',auEmail:'Email',auPw:'Password',auPw2:'Password confirmation',auTerms:'Terms'}[id]||'This field';
+}
+function authFieldMsg(el){
+  if(!el)return '';
+  var id=el.id,name=authFieldName(id);
+  if(el.validity&&el.validity.valueMissing)return id==='auTerms'?'Please accept the Terms to continue.':name+' is required.';
+  if(el.validity&&el.validity.typeMismatch)return 'Enter a valid email address.';
+  if(el.validity&&el.validity.tooShort)return name+' needs at least '+el.getAttribute('minlength')+' characters.';
+  return '';
+}
+function authSetFieldError(id,msg){
+  var el=document.getElementById(id),err=document.getElementById(id+'Err');
+  if(el){el.setAttribute('aria-invalid','true');}
+  if(err){err.textContent=msg;err.classList.remove('hidden');}
+  var wrap=el&&el.closest('.afield,.acheck');
+  if(wrap)wrap.classList.add('bad');
+}
+function authClearFieldError(id){
+  var el=document.getElementById(id),err=document.getElementById(id+'Err');
+  if(el){el.removeAttribute('aria-invalid');}
+  if(err){err.textContent='';err.classList.add('hidden');}
+  var wrap=el&&el.closest('.afield,.acheck');
+  if(wrap)wrap.classList.remove('bad');
+}
+function authClearAllFieldErrors(){
+  ['auName','auEmail','auPw','auPw2','auTerms'].forEach(authClearFieldError);
+}
+function authNativeInvalid(ev){
+  if(!ev||!ev.target)return;
+  ev.preventDefault();
+  authSetFieldError(ev.target.id,authFieldMsg(ev.target));
+}
+function authFieldInput(ev){
+  if(ev&&ev.target)authClearFieldError(ev.target.id);
+}
+function authStopAt(id,msg){
+  authSetFieldError(id,msg);
+  var el=document.getElementById(id);
+  if(el)try{el.focus();}catch(e){}
+  return false;
+}
 function authBusy(on){
   var b=document.getElementById('authGo');
   if(b){b.disabled=!!on;b.classList.toggle('busy',!!on);}
+}
+function togglePassword(id,btn){
+  var input=document.getElementById(id);
+  if(!input)return;
+  var showing=input.type==='text';
+  input.type=showing?'password':'text';
+  if(btn){
+    btn.textContent=showing?'Show':'Hide';
+    btn.setAttribute('aria-label',(showing?'Show':'Hide')+' password');
+    btn.setAttribute('aria-pressed',showing?'false':'true');
+  }
+  try{input.focus();}catch(e){}
+}
+function pwFieldHTML(label,id,autocomplete,placeholder){
+  return '<label class="afield"><span class="alabel">'+esc(label)+' <span class="req">required</span></span>'+
+    '<span class="apw"><input type="password" id="'+esc(id)+'" autocomplete="'+esc(autocomplete)+'" minlength="8" placeholder="'+esc(placeholder)+'" required aria-describedby="'+esc(id)+'Err" oninvalid="authNativeInvalid(event)" oninput="authFieldInput(event)">'+
+    '<button type="button" class="apwbtn" onclick="togglePassword(\''+esc(id)+'\',this)" aria-label="Show password" aria-pressed="false">Show</button></span>'+
+    '<span class="aferr hidden" id="'+esc(id)+'Err"></span></label>';
 }
 function authCardHTML(mode,opts){
   var close='<button type="button" class="aclose" onclick="closeAuth()" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
@@ -1878,15 +1954,17 @@ function authCardHTML(mode,opts){
   var logo='<div class="alogo">Prep<b>Signals</b><span class="dot"></span></div>';
   if(mode==='signup'){
     var title=(opts&&opts.title)||'Create your free account';
-    var msg=(opts&&opts.msg)||'Save your score path, debriefs, checklist and progress — synced across your devices.';
+    var msg=(opts&&opts.msg)||'Save your plan, checklist, debriefs, and progress across devices.';
     return '<div class="authcard">'+close+logo+
       '<h3>'+esc(title)+'</h3><p class="asub">'+esc(msg)+'</p>'+err+
       '<form onsubmit="doSignup(event)">'+
-      '<label class="afield">Name<input type="text" id="auName" autocomplete="name" maxlength="80" placeholder="Your name"></label>'+
-      '<label class="afield">Email<input type="email" id="auEmail" autocomplete="email" placeholder="you@example.com"></label>'+
-      '<label class="afield">Password<input type="password" id="auPw" autocomplete="new-password" minlength="8" placeholder="8+ characters"></label>'+
-      '<label class="acheck"><input type="checkbox" id="auTerms"><span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a></span></label>'+
-      '<label class="acheck optional"><input type="checkbox" id="auMkt"><span>Send me prep discounts, product updates, and study tips</span></label>'+
+      '<label class="afield"><span class="alabel">Name <span class="req">required</span></span><input type="text" id="auName" autocomplete="name" maxlength="80" placeholder="Your name" required aria-describedby="auNameErr" oninvalid="authNativeInvalid(event)" oninput="authFieldInput(event)"><span class="aferr hidden" id="auNameErr"></span></label>'+
+      '<label class="afield"><span class="alabel">Email <span class="req">required</span></span><input type="email" id="auEmail" autocomplete="email" placeholder="you@example.com" required aria-describedby="auEmailErr" oninvalid="authNativeInvalid(event)" oninput="authFieldInput(event)"><span class="aferr hidden" id="auEmailErr"></span></label>'+
+      pwFieldHTML('Password','auPw','new-password','8+ characters')+
+      '<label class="acheck"><input type="checkbox" id="auTerms" required aria-describedby="auTermsErr" oninvalid="authNativeInvalid(event)" onchange="authFieldInput(event)"><span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a> <b class="req reqinline">required</b></span></label><span class="aferr checkerr hidden" id="auTermsErr"></span>'+
+      '<label class="acheck optional"><input type="checkbox" id="auMkt"><span>Send me prep offers, product updates, and study tips</span></label>'+
+      '<p class="atrust">Optional. No prep offers unless you check this.</p>'+
+      '<details class="whyacct"><summary>Why create an account?</summary><p>Only saving needs signup, so your plan, checklist, saved debriefs, and score log can sync.</p></details>'+
       '<button type="submit" class="abtn" id="authGo">Create free account</button></form>'+
       '<div class="aswap">Already have an account? <button type="button" class="alink" onclick="openAuth(\'login\',_authSource)">Log in</button></div></div>';
   }
@@ -1894,8 +1972,8 @@ function authCardHTML(mode,opts){
     return '<div class="authcard">'+close+logo+
       '<h3>Welcome back</h3><p class="asub">Log in to your PrepSignals workspace.</p>'+err+
       '<form onsubmit="doLogin(event)">'+
-      '<label class="afield">Email<input type="email" id="auEmail" autocomplete="email" placeholder="you@example.com"></label>'+
-      '<label class="afield">Password<input type="password" id="auPw" autocomplete="current-password" placeholder="Your password"></label>'+
+      '<label class="afield"><span class="alabel">Email <span class="req">required</span></span><input type="email" id="auEmail" autocomplete="email" placeholder="you@example.com" required aria-describedby="auEmailErr" oninvalid="authNativeInvalid(event)" oninput="authFieldInput(event)"><span class="aferr hidden" id="auEmailErr"></span></label>'+
+      pwFieldHTML('Password','auPw','current-password','Your password')+
       '<button type="submit" class="abtn" id="authGo">Log in</button></form>'+
       '<div class="aswap"><button type="button" class="alink" onclick="openAuth(\'forgot\',_authSource)">Forgot password?</button></div>'+
       '<div class="aswap">New here? <button type="button" class="alink" onclick="openAuth(\'signup\',_authSource)">Create a free account</button></div></div>';
@@ -1904,7 +1982,7 @@ function authCardHTML(mode,opts){
     return '<div class="authcard">'+close+logo+
       '<h3>Reset your password</h3><p class="asub">Enter your account email and we’ll send a reset link.</p>'+err+
       '<form onsubmit="doForgot(event)">'+
-      '<label class="afield">Email<input type="email" id="auEmail" autocomplete="email" placeholder="you@example.com"></label>'+
+      '<label class="afield"><span class="alabel">Email <span class="req">required</span></span><input type="email" id="auEmail" autocomplete="email" placeholder="you@example.com" required aria-describedby="auEmailErr" oninvalid="authNativeInvalid(event)" oninput="authFieldInput(event)"><span class="aferr hidden" id="auEmailErr"></span></label>'+
       '<button type="submit" class="abtn" id="authGo">Send reset link</button></form>'+
       '<div class="aswap"><button type="button" class="alink" onclick="openAuth(\'login\',_authSource)">Back to log in</button></div></div>';
   }
@@ -1912,15 +1990,16 @@ function authCardHTML(mode,opts){
     return '<div class="authcard">'+close+logo+
       '<h3>Choose a new password</h3><p class="asub">You’re resetting the password for this account.</p>'+err+
       '<form onsubmit="doReset(event)">'+
-      '<label class="afield">New password<input type="password" id="auPw" autocomplete="new-password" minlength="8" placeholder="8+ characters"></label>'+
-      '<label class="afield">Repeat it<input type="password" id="auPw2" autocomplete="new-password" minlength="8" placeholder="Same password again"></label>'+
+      pwFieldHTML('New password','auPw','new-password','8+ characters')+
+      pwFieldHTML('Repeat it','auPw2','new-password','Same password again')+
       '<button type="submit" class="abtn" id="authGo">Set new password</button></form></div>';
   }
   if(mode==='checkmail'){
     var em=(opts&&opts.email)||'';
     return '<div class="authcard">'+close+logo+
       '<div class="abig">📬</div><h3>Check your email</h3>'+
-      '<p class="asub">We sent a verification link to <b>'+esc(em)+'</b>. Tap it to activate your account — your saves start syncing right after. (Check spam if it’s not there in a minute.)</p>'+err+
+      '<p class="asub">We sent a verification link to <b>'+esc(em)+'</b>. You can keep this tab open.</p>'+
+      '<ol class="mailsteps"><li>Check your inbox.</li><li>Click the verification link.</li><li>Return to PrepSignals; your saves will sync.</li></ol>'+err+
       '<button type="button" class="abtn ghost" id="authGo" onclick="doResend(\''+esc(em)+'\')">Resend the email</button>'+
       '<div class="aswap">Wrong address? <button type="button" class="alink" onclick="openAuth(\'signup\',_authSource)">Sign up again</button></div></div>';
   }
@@ -1928,7 +2007,7 @@ function authCardHTML(mode,opts){
     var em2=(authUser&&authUser.email)||'';
     return '<div class="authcard">'+close+logo+
       '<div class="abig">✉️</div><h3>Verify your email first</h3>'+
-      '<p class="asub">Saving and syncing unlock once you verify <b>'+esc(em2)+'</b>. Open the link we emailed you when you signed up.</p>'+err+
+      '<p class="asub">Saving unlocks after you verify <b>'+esc(em2)+'</b>. Keep this tab open, click the email link, then come back here.</p>'+err+
       '<button type="button" class="abtn ghost" id="authGo" onclick="doResend(\''+esc(em2)+'\')">Resend verification email</button>'+
       '<div class="aswap"><button type="button" class="alink" onclick="doLogout();closeAuth()">Sign out</button></div></div>';
   }
@@ -1939,13 +2018,16 @@ function authCardHTML(mode,opts){
 function validEmail(s){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s||'');}
 async function doSignup(ev){
   if(ev)ev.preventDefault();
+  authClearError();authClearAllFieldErrors();
   var g=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
   var name=g('auName'),email=g('auEmail'),pw=(document.getElementById('auPw')||{}).value||'';
   var terms=(document.getElementById('auTerms')||{}).checked,mkt=(document.getElementById('auMkt')||{}).checked;
-  if(!name)return authErr('Please enter your name.');
-  if(!validEmail(email))return authErr('That email doesn’t look right.');
-  if(pw.length<8)return authErr('Password needs at least 8 characters.');
-  if(!terms)return authErr('Please agree to the Terms and Privacy Policy to create an account.');
+  if(!name)return authStopAt('auName','Name is required.');
+  if(!email)return authStopAt('auEmail','Email is required.');
+  if(!validEmail(email))return authStopAt('auEmail','Enter a valid email address.');
+  if(!pw)return authStopAt('auPw','Password is required.');
+  if(pw.length<8)return authStopAt('auPw','Password needs at least 8 characters.');
+  if(!terms)return authStopAt('auTerms','Please accept the Terms to continue.');
   authBusy(true);
   try{
     var res=await sbClient.auth.signUp({email:email,password:pw,options:{
@@ -1965,10 +2047,12 @@ async function doSignup(ev){
 }
 async function doLogin(ev){
   if(ev)ev.preventDefault();
+  authClearError();authClearAllFieldErrors();
   var email=((document.getElementById('auEmail')||{}).value||'').trim();
   var pw=(document.getElementById('auPw')||{}).value||'';
-  if(!validEmail(email))return authErr('That email doesn’t look right.');
-  if(!pw)return authErr('Enter your password.');
+  if(!email)return authStopAt('auEmail','Email is required.');
+  if(!validEmail(email))return authStopAt('auEmail','Enter a valid email address.');
+  if(!pw)return authStopAt('auPw','Password is required.');
   authBusy(true);
   try{
     var res=await sbClient.auth.signInWithPassword({email:email,password:pw});
@@ -1983,8 +2067,10 @@ async function doLogin(ev){
 }
 async function doForgot(ev){
   if(ev)ev.preventDefault();
+  authClearError();authClearAllFieldErrors();
   var email=((document.getElementById('auEmail')||{}).value||'').trim();
-  if(!validEmail(email))return authErr('That email doesn’t look right.');
+  if(!email)return authStopAt('auEmail','Email is required.');
+  if(!validEmail(email))return authStopAt('auEmail','Enter a valid email address.');
   authBusy(true);
   try{
     var res=await sbClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/auth/reset'});
@@ -1998,9 +2084,12 @@ async function doForgot(ev){
 }
 async function doReset(ev){
   if(ev)ev.preventDefault();
+  authClearError();authClearAllFieldErrors();
   var pw=(document.getElementById('auPw')||{}).value||'',pw2=(document.getElementById('auPw2')||{}).value||'';
-  if(pw.length<8)return authErr('Password needs at least 8 characters.');
-  if(pw!==pw2)return authErr('The two passwords don’t match.');
+  if(!pw)return authStopAt('auPw','Password is required.');
+  if(pw.length<8)return authStopAt('auPw','Password needs at least 8 characters.');
+  if(!pw2)return authStopAt('auPw2','Password confirmation is required.');
+  if(pw!==pw2)return authStopAt('auPw2','The two passwords don’t match.');
   authBusy(true);
   try{
     var res=await sbClient.auth.updateUser({password:pw});
@@ -2049,21 +2138,21 @@ async function doDeleteAccount(){
 function planSyncCardHTML(){
   var CHECK='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4.5 12.5l5 5L19.5 7"/></svg>';
   if(!accountsOn())
-    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Your score path is saved on this device</b> — and this page has its own link, so you can bookmark or share it.</span><a href="/me" data-nav>See what’s saved</a></div>';
+    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Saved on this device</b> — this path has a shareable link.</span><a href="/me" data-nav>Open workspace</a></div>';
   if(isLoggedIn()&&emailVerified())
-    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Saved to your account</b> — this path syncs across your devices, and the page has its own shareable link.</span><a href="/me" data-nav>Open Me</a></div>';
+    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Saved to your account</b> — this path syncs across devices.</span><a href="/me" data-nav>Open workspace</a></div>';
   if(isLoggedIn())
-    return '<div class="synccard rise warn"><span class="sico">!</span><span class="grow"><b>Verify your email to save this path to your account.</b> The link is in your inbox.</span><button type="button" class="alink" onclick="openAuth(\'verify\',\'plan\')">Resend</button></div>';
-  return '<div class="synccard rise cta"><span class="sico">'+CHECK+'</span><span class="grow"><b>Create a free account to save this path.</b> This page has its own link you can share — an account keeps the plan, checklist and progress synced across devices.</span><button type="button" class="syncbtn" onclick="openAuth(\'signup\',\'plan\')">Create free account</button></div>';
+    return '<div class="synccard rise warn"><span class="sico">!</span><span class="grow"><b>Verify your email to save this path.</b> The link is in your inbox.</span><button type="button" class="alink" onclick="openAuth(\'verify\',\'plan\')">Resend</button></div>';
+  return '<div class="synccard rise cta"><span class="sico">'+CHECK+'</span><span class="grow"><b>Save this path.</b> Create a free account to sync your plan, checklist, and progress.</span><button type="button" class="syncbtn" onclick="openAuth(\'signup\',\'plan\')">Create account</button></div>';
 }
 function checkNoteHTML(){
-  if(!accountsOn())return 'Ticks save in this browser · <a href="/me" data-nav>everything you save lives under Me</a>';
-  if(isLoggedIn()&&emailVerified())return 'Ticks sync to your account · <a href="/me" data-nav>everything you save lives under Me</a>';
-  return 'Sign up free to keep your checklist · <button type="button" class="alink" onclick="openAuth(\'signup\',\'checklist\')">create an account</button>';
+  if(!accountsOn())return 'Checklist progress saves in this browser · <a href="/me" data-nav>open workspace</a>';
+  if(isLoggedIn()&&emailVerified())return 'Checklist progress syncs to your account · <a href="/me" data-nav>open workspace</a>';
+  return 'Create a free account to keep checklist progress · <button type="button" class="alink" onclick="openAuth(\'signup\',\'checklist\')">create account</button>';
 }
 /* /me gate: returns HTML when the workspace is locked, null when app.js should render normally */
 function meAuthGateHTML(sub){
-  if(!accountsOn())return null;                 /* offline fallback: old local Me */
+  if(!accountsOn())return null;                 /* offline fallback: old local workspace */
   if(isLoggedIn()&&emailVerified())return null;
   if(isLoggedIn())return meVerifyHTML();
   return meLockedHTML();
@@ -2071,14 +2160,19 @@ function meAuthGateHTML(sub){
 function meLockedHTML(){
   var hasLegacy=false;
   try{hasLegacy=!!(localStorage.getItem('ps_saved_v1')||localStorage.getItem('ps_progress_v1')||localStorage.getItem('ps_plan_v1'));}catch(e){}
-  return '<section class="mehead"><h1>Me</h1><p>Your plan, checklist, saved debriefs and progress — in one workspace.</p></section>'+
+  return '<section class="mehead"><h1>Workspace</h1><p>Your plan, checklist, saved debriefs and progress in one place.</p></section>'+
     '<div class="lockcard rise">'+
     '<div class="lockbadge">Free account</div>'+
-    '<h3>Your workspace unlocks after free signup</h3>'+
-    '<p>Everything you do on PrepSignals can live here and follow you across devices:</p>'+
+    '<h3>Save your prep workspace</h3>'+
+    '<p>Create a free account when you want your study data to follow you across devices.</p>'+
+    '<div class="lockpreview" aria-label="Workspace preview">'+
+    '<div><span>Saved</span><b>Debriefs to revisit</b></div>'+
+    '<div><span>Checklist</span><b>Progress synced</b></div>'+
+    '<div><span>Score log</span><b>Mocks on one trend</b></div>'+
+    '</div>'+
     '<ul class="locklist">'+
     '<li><b>Score path</b> — keep your plan and reopen it anywhere</li>'+
-    '<li><b>Week-one checklist</b> — ticks that don’t vanish</li>'+
+    '<li><b>Week-one checklist</b> — checklist progress that stays synced</li>'+
     '<li><b>Saved debriefs</b> — a reading list of stories worth revisiting</li>'+
     '<li><b>Progress log</b> — every mock on one trend line</li>'+
     '<li><b>Recommendations</b> — debriefs matched to your target and weak area</li>'+
@@ -2091,11 +2185,11 @@ function meLockedHTML(){
 }
 function meVerifyHTML(){
   var em=(authUser&&authUser.email)||'';
-  return '<section class="mehead"><h1>Me</h1><p>One step left before your workspace unlocks.</p></section>'+
+  return '<section class="mehead"><h1>Workspace</h1><p>One step left before your workspace unlocks.</p></section>'+
     '<div class="lockcard rise">'+
     '<div class="lockbadge amber">Verify email</div>'+
     '<h3>Confirm '+esc(em)+' to start syncing</h3>'+
-    '<p>We emailed you a verification link when you signed up. Open it and this page becomes your synced workspace — saved debriefs, checklist, progress and recommendations.</p>'+
+    '<p>Check your email, click the verification link, then return to PrepSignals. You can keep this tab open; your saves start syncing after verification.</p>'+
     '<div class="lockbtns"><button type="button" class="abtn" onclick="doResend(\''+esc(em)+'\')">Resend verification email</button>'+
     '<button type="button" class="alink" onclick="doLogout()">Sign out</button></div>'+
     '</div>'+
@@ -2143,7 +2237,8 @@ function meAccountHTML(){
     '<label class="pfield">Main weak area<select id="acWeak">'+weakOpts+'</select></label>'+
     '<label class="pfield">Prep stage<select id="acStage">'+stageOpts+'</select></label>'+
     '</div>'+
-    '<label class="acheck" style="margin-top:12px"><input type="checkbox" id="acMkt"'+(p.marketing_opt_in?' checked':'')+'><span>Send me prep discounts, product updates, and study tips</span></label>'+
+    '<label class="acheck" style="margin-top:12px"><input type="checkbox" id="acMkt"'+(p.marketing_opt_in?' checked':'')+'><span>Send me prep offers, product updates, and study tips</span></label>'+
+    '<p class="atrust">Optional. No prep offers unless you check this.</p>'+
     '<div class="acctbtns">'+
     '<button type="button" class="paddbtn" onclick="saveAccountForm()">Save account settings</button>'+
     '<button type="button" class="ghostbtn" onclick="doLogout()">Sign out</button>'+
@@ -2161,7 +2256,7 @@ async function saveAccountForm(){
   if(ok)refreshAuthUI();
 }
 function meHeadSub(){
-  if(cloudOK())return 'Signed in as '+esc(authUser.email)+' — everything here syncs to your account.';
+  if(cloudOK())return 'Signed in as '+esc(authUser.email)+'. Saves sync to your account.';
   return 'Your plan, checklist, saved debriefs and progress — saved in this browser.';
 }
 
@@ -2175,7 +2270,7 @@ document.addEventListener('keydown',function(e){
 initAuthClient();
 
 'use strict';
-/* ================= v.20.1 ADMIN — /admin dashboard (role='admin' only) =================
+/* ================= v.20.2 ADMIN — /admin dashboard (role='admin' only) =================
    Client-side rendering, server-side protection: every query below runs through
    Supabase row-level security, so a non-admin session gets zero rows back no
    matter what URL they open. The route guard here is UX, not the security layer. */
@@ -2191,7 +2286,7 @@ function renderAdmin(sub){
     el.innerHTML='<section class="mehead"><h1>Admin</h1><p>This area is for the PrepSignals admin account.</p></section>'+
       '<div class="panel meempty" style="margin-top:18px"><div class="big">🔐</div>'+
       (isLoggedIn()?'Your account doesn’t have admin access.':'Log in with the admin account to continue.')+
-      '<br><br>'+(isLoggedIn()?'<a class="morebtn" href="/me" data-nav style="margin-top:0">Back to Me</a>'
+      '<br><br>'+(isLoggedIn()?'<a class="morebtn" href="/me" data-nav style="margin-top:0">Back to Workspace</a>'
         :'<button class="morebtn" style="margin-top:0" onclick="openAuth(\'login\',\'admin\')">Log in</button>')+'</div>';
     return;
   }
@@ -2328,8 +2423,8 @@ function admContentHTML(D){
   html+=admPanel('Most-saved debriefs','Save counts across all users; open PostHog for most-viewed.',
     top.length?hBarsHTML(top,Math.max.apply(null,top.map(function(t){return t[1];})),{color:'var(--amber)'}):'<div class="empty2">Nothing saved yet.</div>');
   html+=admPanel('Checklist state','Each account keeps one active 4-tick checklist per plan.',
-    D.checks.length?hBarsHTML([['0 ticks',D.checks.filter(function(c){return !(c.done||[]).filter(Boolean).length;}).length],
-      ['1–3 ticks',D.checks.filter(function(c){var k=(c.done||[]).filter(Boolean).length;return k>0&&k<4;}).length],
+    D.checks.length?hBarsHTML([['0 checks',D.checks.filter(function(c){return !(c.done||[]).filter(Boolean).length;}).length],
+      ['1–3 checks',D.checks.filter(function(c){var k=(c.done||[]).filter(Boolean).length;return k>0&&k<4;}).length],
       ['all 4 done',D.checks.filter(function(c){return (c.done||[]).filter(Boolean).length>=4;}).length]],
       D.checks.length,{color:'var(--green)'}):'<div class="empty2">No checklists yet.</div>');
   return html;
