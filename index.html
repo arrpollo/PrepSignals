@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>PrepSignals — your personal GMAT score plan</title>
+<meta name="description" content="Answer four quick questions and get a personal GMAT score path matched to 330 real debriefs from people who started near you and reached your target.">
+<link rel="canonical" href="https://prepsignals.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PrepSignals">
+<meta property="og:title" content="PrepSignals — your personal GMAT score plan">
+<meta property="og:description" content="Your GMAT score path, built from 330 real debriefs by people who already made the jump.">
+<meta property="og:image" content="https://prepsignals.vercel.app/assets/prepsignals-social-logo.png">
+<meta property="og:url" content="https://prepsignals.vercel.app/">
+<meta name="twitter:card" content="summary_large_image">
+<script>
+window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};
+window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
+(function(){
+  var h=location.hostname;
+  if(location.protocol==='file:'||h==='localhost'||h==='127.0.0.1'||h==='')return;
+  var a=document.createElement('script');a.defer=true;a.src='/_vercel/insights/script.js';document.head.appendChild(a);
+  var s=document.createElement('script');s.defer=true;s.src='/_vercel/speed-insights/script.js';document.head.appendChild(s);
+})();
+</script>
+<script>
+/* PostHog product analytics — skipped on localhost/file so dev sessions don't pollute the data */
+(function(){
+  var h=location.hostname;
+  if(location.protocol==='file:'||h==='localhost'||h==='127.0.0.1'||h==='')return;
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init('phc_CtkjhRN3pZtZEcSMP3YXisKBJbwKenPngJd8tLLmwWbu',{api_host:'https://us.i.posthog.com',defaults:'2025-05-24'});
+})();
+</script>
+<link rel="stylesheet" href="/app.css?v=202607021904">
+<script src="/data.js?v=202607021904" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+<script src="/app.js?v=202607021904" defer></script>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <a class="logo" href="/path" data-nav>Prep<b>Signals</b><span class="dot"></span></a>
+  <nav class="nav">
+    <a id="nav-path" href="/path" data-nav class="on"><span class="navfull">My Score Path</span><span class="navshort">Path</span></a>
+    <a id="nav-explore" href="/explore" data-nav><span class="navfull">Explore the data</span><span class="navshort">Explore</span></a>
+    <a id="nav-about" href="/about" data-nav>About</a>
+    <a id="nav-me" href="/me" data-nav class="menav" aria-label="Me — saved plan, debriefs and progress">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>
+      <span class="navfull">Me</span></a>
+    <a id="nav-admin" href="/admin" data-nav class="hidden">Admin</a>
+    <span id="navAuth" class="navauth"></span>
+  </nav>
+</div></header>
+
+<main id="view-path">
+  <div class="wrap">
+    <section class="hero">
+      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+      <span class="eyebrow"><span class="pulse"></span>330 real GMAT debriefs</span>
+      <h1>Your <em>score path</em>, from people who already made the jump</h1>
+      <p class="lede">Four quick taps. We match you with real stories from people who started where you are and hit your target — then turn them into a plan.</p>
+    </section>
+    <div class="quiz" id="quiz"></div>
+    <div id="planResult"></div>
+  </div>
+</main>
+
+<main id="view-explore" class="hidden">
+  <div class="wrap">
+    <section class="hero" style="padding:44px 0 4px">
+      <span class="blob b1"></span><span class="blob b2"></span>
+      <span class="eyebrow"><span class="pulse"></span>330 real GMAT debriefs</span>
+      <h1>Explore <em>the data</em></h1>
+      <p class="lede">Every debrief, charted. Filter it, tap any bar to open the stories behind it, and read the takeaway under each chart.</p>
+    </section>
+  </div>
+
+  <div class="wrap">
+    <div class="filterbar" id="filterbar"></div>
+    <div class="statrow" id="xstat"></div>
+
+    <div class="kicker" style="margin-top:8px"><span class="kdot" style="background:var(--primary)"></span>Scores</div>
+    <div class="chartgrid">
+      <div class="chartcard rise">
+        <h3>Score distribution <span class="hint" id="xdistHint"></span></h3>
+        <p class="psub">Official total score across the filtered set.</p>
+        <div class="chartbox" id="xdist"></div>
+        <div class="takeaway hidden" id="xdistTake"></div>
+      </div>
+      <div class="chartcard rise">
+        <h3>Where each tier is weakest</h3>
+        <p class="psub">Median Q / V / DI score within each target band.</p>
+        <div class="chartbox" id="xsection"></div>
+        <div class="legend" id="xsectionLeg"></div>
+        <div class="takeaway hidden" id="xsectionTake"></div>
+      </div>
+    </div>
+
+    <div class="kicker"><span class="kdot" style="background:var(--coral)"></span>The jump</div>
+    <div class="chartgrid">
+      <div class="chartcard rise">
+        <h3>How big a jump is realistic? <span class="hint">tap a bar for the stories</span></h3>
+        <p class="psub">Start-to-official point gain, where a start score was reported.</p>
+        <div class="chartbox" id="xgain"></div>
+        <div class="takeaway hidden" id="xgainTake"></div>
+      </div>
+      <div class="chartcard rise">
+        <h3>Prep time vs score gain</h3>
+        <p class="psub">Each dot is a debrief; the dashed line is the overall trend.</p>
+        <div class="chartbox tall" id="xscatter"></div>
+        <div class="takeaway hidden" id="xscatterTake"></div>
+      </div>
+    </div>
+
+    <div class="kicker"><span class="kdot" style="background:var(--green)"></span>Time &amp; attempts</div>
+    <div class="chartgrid">
+      <div class="chartcard rise">
+        <h3>Does more prep time help? <span class="hint">tap a bar for the stories</span></h3>
+        <p class="psub">Median total score by weeks of prep.</p>
+        <div class="chartbox" id="xprep"></div>
+        <div class="takeaway hidden" id="xprepTake"></div>
+      </div>
+      <div class="chartcard rise">
+        <h3>Do retakes pay off? <span class="hint">tap a bar for the stories</span></h3>
+        <p class="psub">Median official score by attempt number, where reported.</p>
+        <div class="chartbox" id="xattempts"></div>
+        <div class="takeaway hidden" id="xattemptsTake"></div>
+      </div>
+    </div>
+
+    <div class="kicker"><span class="kdot" style="background:var(--amber)"></span>What they used</div>
+    <div class="chartgrid">
+      <div class="chartcard rise">
+        <h3>Most-used resources <span class="hint">tap a row for the stories</span></h3>
+        <p class="psub">Share of debriefs naming each — popularity, not proof of effectiveness.</p>
+        <div class="hbarbox" id="xres"></div>
+        <div class="takeaway hidden" id="xresTake"></div>
+      </div>
+      <div class="chartcard rise">
+        <h3>Self-study vs paid course <span class="hint">tap a column for the stories</span></h3>
+        <p class="psub">Self-study = only free material (Official Guide, official mocks, GMAT Club…).</p>
+        <div class="duel" id="xcompare"></div>
+        <div class="takeaway hidden" id="xcompareTake"></div>
+      </div>
+    </div>
+
+    <div class="kicker"><span class="kdot" style="background:var(--violet)"></span>Tactics</div>
+    <div class="chartgrid one">
+      <div class="chartcard rise">
+        <h3>Tactic adoption by score band <span class="hint">tap a cell for examples</span></h3>
+        <p class="psub">Share of each band that mentions a recurring tactic.</p>
+        <div class="heatmap" id="xheat" style="margin-top:4px"></div>
+        <div class="takeaway hidden" id="xheatTake"></div>
+      </div>
+    </div>
+
+    <section class="block bleed" id="xbrowse" style="margin-top:34px">
+      <div class="kicker" style="margin-top:0"><span class="kdot" style="background:var(--green)"></span>Read the stories</div>
+      <div class="shead"><div>
+        <h2>Browse the filtered debriefs</h2>
+        <p class="sub" id="xbrowseSub"></p>
+      </div></div>
+      <div class="tools">
+        <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="xq" type="search" placeholder="Search titles or resources…" autocomplete="off"></div>
+        <select class="pick" id="xsort">
+          <option value="score">Highest score</option>
+          <option value="new">Newest first</option>
+          <option value="gain">Biggest gain</option>
+          <option value="detail">Most detailed</option>
+        </select>
+      </div>
+      <div id="xbrowseList" class="cards"></div>
+      <div class="empty hidden" id="xbrowseEmpty">No debriefs match. Clear the search box or use Reset in the filter bar.</div>
+      <button class="morebtn hidden" id="xbrowseMore" onclick="xShowMore()">Show more <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </section>
+  </div>
+</main>
+
+<main id="view-me" class="hidden">
+  <div class="wrap" id="meBody"></div>
+</main>
+
+<main id="view-admin" class="hidden">
+  <div class="wrap" id="adminBody"></div>
+</main>
+
+<section id="view-about" class="hidden"><div class="wrap about" style="padding-top:42px;padding-bottom:42px">
+  <h2>About PrepSignals</h2>
+  <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Answer four quick questions on My Score Path, or pick a score range under Explore the Data to see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
+  <h3>Where the data comes from</h3>
+  <p>Every debrief links back to its original public post on Reddit's r/GMAT and GMAT Club. We only summarise — the source is always one tap away so you can read it in full and judge for yourself.</p>
+  <h3>Independence</h3>
+  <p>PrepSignals is independent and isn't affiliated with GMAC, any prep company, or any course. Resources are named because the original posters named them, not because anyone paid to appear. Debriefs that read like promotions are flagged "Maybe Promo" so you can weigh them.</p>
+  <h3>How to read the colors</h3>
+  <p>Colors mean the same thing everywhere on the site: <b>blue</b> is Quant, <b>purple</b> is Verbal, <b>teal</b> is Data Insights, <b>amber</b> is resources, <b>green</b> is timing and test-day execution, and <b>coral</b> is score gains.</p>
+  <h3>Accounts &amp; privacy</h3>
+  <p>You can use most of PrepSignals without an account: browsing debriefs, Explore, and building a score path all work anonymously, and anonymous activity stays in your own browser. A free account is needed to <b>save</b> things — debriefs, your checklist, and your progress log — so they can sync across devices. If you sign up, your name, email, and saved study data are stored securely with our database provider (Supabase); your password is stored only as a salted hash, and we verify your email before any data syncs.</p>
+  <p>We use Vercel's privacy-friendly aggregate analytics and PostHog product analytics to understand which pages and features are useful. We never sell your data, and marketing email is strictly opt-in. Full details: <a href="/privacy" data-nav>Privacy Policy</a> · <a href="/terms" data-nav>Terms of Service</a>.</p>
+  <h3>Feedback</h3>
+  <p>If you want to see more features, notice something wrong, or have feedback, please email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
+  <p>If you are the author of a post represented in this project and want it removed or corrected, contact <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
+  <p style="margin-top:18px;color:var(--ink-3)">Data spans 2023-11-13 to 2026-06-24.</p>
+</div></section>
+
+<section id="view-terms" class="hidden"><div class="wrap about legal" style="padding-top:42px;padding-bottom:42px">
+  <h2>Terms of Service</h2>
+  <p class="legaldate">Effective date: July 2, 2026</p>
+  <p>Welcome to PrepSignals ("PrepSignals", "we", "us"). By using prepsignals.vercel.app (the "Service") you agree to these Terms. If you don't agree, please don't use the Service.</p>
+  <h3>1. What PrepSignals is</h3>
+  <p>PrepSignals summarises publicly posted GMAT debriefs and turns them into charts, cohort statistics, and a personal study plan. It is an independent study-research tool. It is <b>not</b> affiliated with GMAC, Reddit, GMAT Club, or any test-prep company, and it is not test-prep advice from a licensed advisor.</p>
+  <h3>2. No score guarantees</h3>
+  <p>Everything on the Service is descriptive, not causal. Debrief statistics show what other people reported doing — they don't guarantee that any plan, resource, or tactic will change your score. Your prep decisions are your own.</p>
+  <h3>3. Accounts</h3>
+  <p>You can browse without an account. To save debriefs, keep a checklist, or log progress you need a free account with a valid email address. You are responsible for keeping your password confidential and for activity under your account. You must be at least 16 years old to create an account. We may suspend or delete accounts that abuse the Service (automated scraping, attempts to access other users' data, or attempts to bypass access controls).</p>
+  <h3>4. Your data</h3>
+  <p>You keep ownership of the study data you save (your plan, saved debriefs, checklist, and progress log). You grant us permission to store and process it solely to run the Service — syncing it across your devices and showing it back to you. See the <a href="/privacy" data-nav>Privacy Policy</a> for details, including how to delete your account and data.</p>
+  <h3>5. Third-party content</h3>
+  <p>Debrief summaries are derived from public posts on Reddit's r/GMAT and GMAT Club and always link to the original source. The original posts belong to their authors and platforms. If you are the author of a summarised post and want it removed or corrected, email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a> and we will act promptly.</p>
+  <h3>6. Acceptable use</h3>
+  <p>Don't misuse the Service: no unauthorized access attempts, no bulk scraping of the database, no reselling of the data, and no use of the Service to send spam. We may throttle or block abusive traffic.</p>
+  <h3>7. Availability and changes</h3>
+  <p>The Service is provided free of charge and "as is", without warranties of any kind. We may change, pause, or discontinue features at any time. We are not liable for indirect or consequential damages arising from your use of the Service; our total liability is limited to the amount you paid us (which, today, is zero).</p>
+  <h3>8. Changes to these Terms</h3>
+  <p>If we make material changes we'll update the effective date above and, for account holders, note the change on the site or by email. Continuing to use the Service after a change means you accept the new Terms.</p>
+  <h3>9. Contact</h3>
+  <p>Questions about these Terms: <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
+</div></section>
+
+<section id="view-privacy" class="hidden"><div class="wrap about legal" style="padding-top:42px;padding-bottom:42px">
+  <h2>Privacy Policy</h2>
+  <p class="legaldate">Effective date: July 2, 2026</p>
+  <p>This policy explains what PrepSignals collects, why, and what control you have. The short version: anonymous use stays in your browser; an account stores your study data server-side so it can sync; analytics are aggregate; marketing email is opt-in; we never sell your data.</p>
+  <h3>1. What we collect — without an account</h3>
+  <p>Nothing that identifies you. Your four score-path answers live in this browser only. We collect aggregate usage analytics (see section 4) about which pages and features are used.</p>
+  <h3>2. What we collect — with an account</h3>
+  <p>When you sign up we collect your <b>name</b>, <b>email address</b>, and <b>password</b> (stored only as a salted hash by our authentication provider — we never see it). If you choose to provide them, we also store your target score, test month, main weak area, and prep stage, so the Service can personalise recommendations. Your saved study data — score path, saved debriefs, checklist, and progress log — is stored in our database so it syncs across your devices. We record whether you opted in to marketing email and which Terms version you accepted.</p>
+  <h3>3. Where it's stored</h3>
+  <p>Account data is stored with <b>Supabase</b> (our authentication and database provider) and protected by row-level security: your data is readable only by you and by PrepSignals administration. The site is hosted on <b>Vercel</b>.</p>
+  <h3>4. Analytics</h3>
+  <p>We use <b>Vercel Analytics</b> (aggregate, cookie-free page analytics) and <b>PostHog</b> (product analytics: which features are used, where people drop off). Anonymous visitors are not personally identified. If you log in, your product-analytics events are associated with your account so we can understand and improve the logged-in experience. We do not run third-party advertising trackers.</p>
+  <h3>5. Email</h3>
+  <p>We send transactional email you can't opt out of while you have an account (email verification, password reset). Marketing email — prep discounts, product updates, study tips — is sent <b>only if you opted in</b>, and every message includes an unsubscribe link. You can change the marketing setting anytime under Me → Account.</p>
+  <h3>6. Cookies and local storage</h3>
+  <p>We use browser local storage to keep you signed in and to cache your study data on your device. We don't use advertising cookies.</p>
+  <h3>7. Your rights</h3>
+  <p>You can view and edit your profile under Me → Account. You can delete your account there too — deletion removes your profile and all saved study data from our database. You can also email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a> to request a copy or deletion of your data, and we'll respond within 30 days.</p>
+  <h3>8. Children</h3>
+  <p>PrepSignals is not directed at children under 16, and we don't knowingly collect their data.</p>
+  <h3>9. Changes</h3>
+  <p>If this policy changes materially we'll update the effective date above and note the change on the site or by email to account holders.</p>
+  <h3>10. Contact</h3>
+  <p>Privacy questions: <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
+</div></section>
+
+<div class="detail" id="detail"><div class="dinner">
+  <div class="dtop"><div class="wrap">
+    <button class="backbtn" onclick="closeDebrief()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back</button>
+    <a class="logo" href="/path" data-nav style="font-size:17px">Prep<b>Signals</b><span class="dot"></span></a>
+  </div></div>
+  <div class="wrap" id="detailBody"></div>
+</div></div>
+
+<div class="cohort" id="cohort"><div class="dinner">
+  <div class="ctopbar"><div class="wrap">
+    <button class="backbtn" onclick="closeCohort()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back</button>
+    <a class="logo" href="/path" data-nav style="font-size:17px">Prep<b>Signals</b><span class="dot"></span></a>
+  </div></div>
+  <div class="wrap">
+    <div class="cohorthead">
+      <h2 id="cohortTitle"></h2>
+      <p id="cohortSub"></p>
+      <div class="cohortmeta" id="cohortMeta"></div>
+    </div>
+    <div class="cohortinsight hidden" id="cohortInsight"></div>
+    <details class="cohortexamples" id="cohortExamples">
+      <summary>
+        <div><h3 id="cohortExamplesTitle">Example debriefs</h3><p id="cohortExamplesSub"></p></div>
+        <span class="sumicon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
+      </summary>
+      <div class="cards" id="cohortCards"></div>
+    </details>
+  </div>
+</div></div>
+
+<div class="authwrap" id="authModal" role="dialog" aria-modal="true" aria-label="Account"></div>
+
+<footer><div class="wrap">
+  <span>PrepSignals — independent GMAT debrief signal. Not affiliated with GMAC.</span>
+  <span><a href="/about" data-nav>About &amp; sources</a> · <a href="/terms" data-nav>Terms</a> · <a href="/privacy" data-nav>Privacy</a> · <a href="/me" data-nav>Me</a></span>
+</div></footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body></html>

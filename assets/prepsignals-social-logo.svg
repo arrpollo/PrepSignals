@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-label="PrepSignals logo">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="24%" r="70%">
+      <stop offset="0%" stop-color="#edecfb"/>
+      <stop offset="52%" stop-color="#f7f8fd"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#1c1c50" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <rect width="1080" height="1080" rx="196" fill="url(#bgGlow)"/>
+  <circle cx="846" cy="246" r="124" fill="#ffeeec" opacity=".9"/>
+  <circle cx="230" cy="794" r="154" fill="#e6f6ec" opacity=".82"/>
+  <g filter="url(#softShadow)">
+    <rect x="130" y="363" width="820" height="354" rx="78" fill="#ffffff"/>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Inter, Roboto, Arial, sans-serif" font-weight="800">
+    <text x="540" y="555" text-anchor="middle" font-size="112" letter-spacing="-4">
+      <tspan fill="#1b1e2e">Prep</tspan><tspan fill="#5b5bd6">Signals</tspan>
+    </text>
+  </g>
+  <circle cx="846" cy="525" r="19" fill="#ff6b5b"/>
+  <circle cx="303" cy="617" r="10" fill="#15a34a"/>
+  <circle cx="331" cy="617" r="10" fill="#2f74e0"/>
+  <circle cx="359" cy="617" r="10" fill="#7c5cf0"/>
+</svg>
