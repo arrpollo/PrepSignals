@@ -1,29 +1,35 @@
 #!/usr/bin/env python3
-"""v.19.2 — PrepSignals, personalized plan + full data-insights charts.
+"""v.19.2.1 — PrepSignals UX/UI refresh on top of v.19.2.
 
 Reads debriefs.json + post_details.json and writes a self-contained
-dashboard_v19_2.html. Charts are hand-rolled SVG/CSS (no chart library),
-themed to the v.19 design system, and all aggregation happens in-browser.
+dashboard_v19_2_1.html. Charts are hand-rolled SVG/CSS (no chart library),
+and all aggregation happens in-browser.
 
-What changed vs v19.1:
-  1. PATH-FIRST PERSONALIZATION — the band-scoped analytics that used to live
-     on the Explore tab now support a personalized "My Score Path" tab. After
-     the 4-question intake, the page leads with a path summary, one "do this
-     first" recommendation, three practical levers, and closest stories before
-     the lower, collapsed evidence charts.
-  2. NEW "Explore the Data" tab — brings back the depth of the old v.16
-     dashboard as a GLOBAL, filterable analytics view over every debrief:
-     score distribution, section medians by band (grouped bars), point-gain
-     distribution, resource popularity, prep-time vs gain scatter + trendline,
-     median score by prep duration, per-section tactic effectiveness, and a
-     tactic x band heatmap — with a filter toolbar (score / source / resource /
-     self-study) and a live stat row. All hand-rolled SVG in the new UI.
-  3. Mobile-first: every new chart has a compact <520px variant and the whole
-     surface collapses cleanly at the 760px breakpoint.
+What changed vs v19.2:
+  UX
+  1. STEPPER INTAKE — the 4 questions now show one at a time in a single
+     card with a progress bar, auto-advance, and big tap targets (~75% of
+     traffic is mobile). Same ?p= links, same localStorage key.
+  2. PLAN AS STEPS — the result page is a numbered flow: gradient "score
+     path" ticket (jump, % who made it, typical prep, matches) -> Step 1
+     do-this-today -> Step 2 persistent weekly checklist (ticks saved per
+     plan in localStorage) -> Step 3 three focus areas. The old separate
+     "signals" section is merged away; copy de-jargoned throughout.
+  3. DEEPER EXPLORE — an auto-computed takeaway sentence under every
+     chart, two new analyses (retakes vs first try, self-study vs course),
+     tappable bars/rows that open the matching debriefs in the cohort
+     drawer, and search + sort on the browse list. Chart rows grouped
+     under color-coded kickers.
+  UI
+  4. One documented color system: Quant=blue, Verbal=violet, DI=teal (new
+     token — no longer sharing amber), resources=amber, practice
+     loop=indigo, timing/execution=green, score gains=coral.
+  5. Wider desktop canvas (1180px), full-bleed tinted band, floating hero
+     blobs, count-up numbers, confetti on plan build, staggered
+     reveal-on-scroll, larger mobile gaps and tap targets.
 
-Carried over from v19.x: localStorage persistence, peer
-matching, deterministic per-section insights, no login / no backend, and the
-?p= / ?band= / ?d= deep links.
+Carried over: peer matching, insight drawers, deterministic per-section
+insights, no login / no backend, and the ?p= / ?band= / ?d= deep links.
 
 The template uses plain `__TOKEN__` placeholders filled by str.replace(), so the
 CSS/JS can use normal single braces with no escaping.
@@ -134,8 +140,8 @@ def main():
             .replace("__NDEB__", str(len(deb)))
             .replace("__MEDIAN__", str(int(st.median(scores))) if scores else "—")
             .replace("__MINDATE__", min_date).replace("__MAXDATE__", max_date))
-    (BASE / "dashboard_v19_2.html").write_text(html)
-    print(f"dashboard_v19_2.html written. {len(deb)} debriefs, {len(details)} detail pages.")
+    (BASE / "dashboard_v19_2_1.html").write_text(html)
+    print(f"dashboard_v19_2_1.html written. {len(deb)} debriefs, {len(details)} detail pages.")
     for b in bands:
         print(f"  target {b['label']}: {b['count']}")
 
@@ -156,6 +162,9 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
 })();
 </script>
 <style>
+/* COLOR SYSTEM — one meaning per hue, everywhere:
+   Quant=blue · Verbal=violet · Data Insights=teal · resources=amber
+   practice loop / brand=indigo(primary) · timing+test-day=green · score gains=coral */
 :root{
   --bg:#f5f6fb; --surface:#ffffff; --surface-2:#fbfbfe;
   --ink:#1b1e2e; --ink-2:#586079; --ink-3:#929ab0;
@@ -164,6 +173,7 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
   --green:#15a34a; --green-d:#0f7a37; --green-l:#e6f6ec;
   --amber:#e08a00; --amber-l:#fdf0d9;
   --violet:#7c5cf0; --violet-l:#efeafe;
+  --teal:#0d9488; --teal-d:#0b7a70; --teal-l:#d9f2ee;
   --blue:#2f74e0; --blue-l:#e6f0fd;
   --border:#e8e8f1; --border-2:#dcdce9;
   --radius:18px; --radius-sm:12px;
@@ -173,12 +183,12 @@ window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
   --ease:cubic-bezier(.22,.61,.36,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.55;
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 h1,h2,h3{letter-spacing:-.02em;line-height:1.15}
 
 /* ---- top bar ---- */
@@ -190,7 +200,7 @@ header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
 .logo b{color:var(--primary);font-weight:800}
 .logo .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--coral);
   margin-left:1px;transform:translateY(-1px)}
-.nav{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.nav{display:flex;gap:6px;align-items:center;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .nav::-webkit-scrollbar{display:none}
 .nav button{font-size:14.5px;font-weight:600;color:var(--ink-2);padding:8px 13px;border-radius:10px;
   transition:.18s var(--ease);white-space:nowrap;flex:none}
@@ -208,30 +218,49 @@ header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
 .hero h1{font-size:clamp(30px,6.4vw,52px);font-weight:800;margin:0 auto 16px;max-width:17ch}
 .hero p.lede{font-size:clamp(16px,2.4vw,19px);color:var(--ink-2);max-width:62ch;margin:0 auto 8px}
 .hero p.lede b{color:var(--ink);font-weight:700}
+.hero h1 em{font-style:normal;background:linear-gradient(92deg,var(--primary) 10%,var(--violet) 55%,var(--coral));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--primary)}
+.blob{position:absolute;border-radius:50%;filter:blur(64px);opacity:.5;z-index:-1;pointer-events:none}
+.blob.b1{width:340px;height:340px;left:2%;top:-70px;background:#cdcbf7;animation:floaty 11s ease-in-out infinite}
+.blob.b2{width:300px;height:300px;right:3%;top:-10px;background:#ffddd6;animation:floaty 13s ease-in-out infinite reverse}
+.blob.b3{width:220px;height:220px;right:26%;top:120px;background:#c9ece7;animation:floaty 15s ease-in-out 1s infinite}
+@keyframes floaty{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(20px,-16px) scale(1.07)}}
 
-/* ---- quiz (4-question intake) ---- */
-.quiz{max-width:720px;margin:26px auto 0}
-.qgroup{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:20px 20px 18px;box-shadow:var(--shadow);margin-bottom:14px;text-align:left}
-.qgroup .qtitle{font-size:16px;font-weight:800;display:flex;align-items:center;gap:9px}
-.qgroup .qn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
-  border-radius:50%;background:var(--primary-l);color:var(--primary-d);font-size:12px;font-weight:800;flex:none}
-.qgroup .qsub{font-size:13px;color:var(--ink-2);margin:4px 0 14px;margin-left:31px}
-.qopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px}
-.qopt{background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;
-  padding:12px 13px;text-align:left;transition:.16s var(--ease)}
-.qopt:hover{border-color:var(--border-2)}
+/* ---- quiz (stepper intake: one question per screen) ---- */
+.quiz{max-width:660px;margin:26px auto 0}
+.stepcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px 24px 20px;box-shadow:var(--shadow);text-align:left;overflow:hidden}
+.stepbar{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.stepbar .track{flex:1;height:7px;background:var(--surface-2);border-radius:8px;overflow:hidden}
+.stepbar .fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--primary),var(--violet));
+  transition:width .4s var(--ease)}
+.stepbar .stepct{font-size:12.5px;font-weight:800;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.stepin{animation:stepin .32s var(--ease)}
+@keyframes stepin{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+.qtitle{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
+.qtitle .qico{font-size:22px;line-height:1;flex:none}
+.qsub{font-size:14px;color:var(--ink-2);margin:6px 0 18px}
+.qopts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.qopt{background:var(--surface-2);border:1.5px solid var(--border);border-radius:14px;
+  padding:14px 15px;text-align:left;transition:.16s var(--ease);min-height:58px}
+.qopt:hover{border-color:var(--primary);transform:translateY(-1px)}
+.qopt:active{transform:scale(.98)}
 .qopt.on{background:var(--primary-l);border-color:var(--primary)}
-.qopt .ol{font-size:14px;font-weight:800;color:var(--ink)}
+.qopt .ol{font-size:15px;font-weight:800;color:var(--ink)}
 .qopt.on .ol{color:var(--primary-d)}
-.qopt .os{font-size:12px;color:var(--ink-2);margin-top:2px}
-.quizmatch{font-size:13.5px;color:var(--ink-2);text-align:center;margin:2px 0 16px}
+.qopt .os{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.stepnav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;min-height:34px}
+.stepback{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--ink-2);
+  padding:8px 12px;border-radius:10px;transition:.15s var(--ease)}
+.stepback:hover{background:var(--surface-2);color:var(--ink)}
+.quizmatch{font-size:13.5px;color:var(--ink-2);text-align:center;margin:14px 0 0}
 .quizmatch b{color:var(--primary-d)}
-.quizsubmit-wrap{text-align:center;margin-top:6px}
-.quizsubmit{font-size:16px;font-weight:800;color:#fff;background:var(--primary);padding:14px 26px;
-  border-radius:14px;transition:.18s var(--ease);display:inline-flex;align-items:center;gap:8px}
+.quizmatch .pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px}
+.quizsubmit{font-size:16px;font-weight:800;color:#fff;background:var(--primary);padding:13px 24px;
+  border-radius:14px;transition:.18s var(--ease);display:inline-flex;align-items:center;gap:8px;margin-left:auto}
 .quizsubmit:not(:disabled):hover{background:var(--primary-d);transform:translateY(-1px)}
-.quizsubmit:disabled{opacity:.4;cursor:not-allowed}
+.quizsubmit:active{transform:scale(.98)}
+.quizsubmit:disabled{opacity:.35;cursor:not-allowed}
 
 /* ---- plan head ---- */
 .planhead{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
@@ -249,18 +278,18 @@ header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
 .primaryrec{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;margin-top:16px;
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.primaryrec::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--primary)}
+.primaryrec::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--pr,var(--primary))}
 .primaryrec .ey{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
-  text-transform:uppercase;letter-spacing:.05em;color:var(--primary-d);background:var(--primary-l);
+  text-transform:uppercase;letter-spacing:.05em;color:var(--pr,var(--primary-d));background:var(--pr-l,var(--primary-l));
   border-radius:20px;padding:4px 10px;margin-bottom:12px}
 .primaryrec h3{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:7px}
 .primaryrec p{font-size:14.5px;color:var(--ink-2);max-width:68ch;line-height:1.55}
 .primaryrec .metric{font-size:13px;color:var(--ink-2);margin-top:12px}
 .primaryrec .metric b{color:var(--ink);font-weight:800}
 .primaryrec .actbtn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  color:#fff;background:var(--primary);border-radius:12px;padding:11px 16px;font-size:14px;
+  color:#fff;background:var(--pr,var(--primary));border-radius:12px;padding:11px 16px;font-size:14px;
   font-weight:800;transition:.16s var(--ease);white-space:nowrap}
-.primaryrec .actbtn:hover{background:var(--primary-d);transform:translateY(-1px)}
+.primaryrec .actbtn:hover{filter:brightness(.92);transform:translateY(-1px)}
 .leverintro{font-size:14.5px;color:var(--ink-2);margin-top:7px;max-width:62ch}
 .evidence{margin-top:20px}
 .evidence>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
@@ -273,16 +302,98 @@ header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
   color:var(--primary-d);background:var(--primary-l);font-weight:900;transition:.18s var(--ease);flex:none}
 .evidence[open] .sumicon{transform:rotate(180deg)}
 .evidencebody{padding:20px 0 0}
-.signalgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
-.signalcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.signalcard::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--sc,var(--primary))}
-.signalcard .k{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
-  color:var(--sc,var(--primary));margin-bottom:10px}
-.signalcard h3{font-size:17px;font-weight:800;margin-bottom:7px}
-.signalcard p{font-size:13.5px;color:var(--ink-2);line-height:1.48}
-.signalcard button{display:inline-flex;align-items:center;gap:7px;margin-top:14px;color:var(--sc,var(--primary));
-  background:var(--scl,var(--primary-l));border-radius:11px;padding:9px 12px;font-size:13px;font-weight:800}
+/* ---- score-path ticket (gradient hero card) ---- */
+.ticket{position:relative;overflow:hidden;border-radius:22px;padding:26px 28px;color:#fff;margin-top:8px;
+  background:linear-gradient(128deg,#4f4cd0,#6f58ec 52%,#8b5cf6);box-shadow:0 18px 44px rgba(80,70,220,.32)}
+.ticket::before{content:"";position:absolute;right:-80px;top:-90px;width:280px;height:280px;border-radius:50%;
+  background:rgba(255,255,255,.1)}
+.ticket::after{content:"";position:absolute;left:-60px;bottom:-110px;width:230px;height:230px;border-radius:50%;
+  background:rgba(255,255,255,.07)}
+.ticket>*{position:relative;z-index:1}
+.tktop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.ticket .ey{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.06em;color:#fff;background:rgba(255,255,255,.16);
+  border-radius:20px;padding:5px 11px}
+.tkedit{font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.16);border-radius:10px;
+  padding:8px 13px;transition:.15s var(--ease);white-space:nowrap}
+.tkedit:hover{background:rgba(255,255,255,.26)}
+.ticket .jumpnode .jn,.ticket .jumpnode.target .jn{color:#fff}
+.ticket .jumpnode .jl{color:rgba(255,255,255,.72)}
+.ticket .jumparrow .jtrack{background:repeating-linear-gradient(90deg,rgba(255,255,255,.85) 0 16px,rgba(255,255,255,.3) 16px 26px);
+  background-size:42px 100%;animation:flow 1.5s linear infinite}
+@keyframes flow{to{background-position:42px 0}}
+.ticket .jumparrow .jhead{border-left-color:#fff}
+.ticket .jumparrow .jgain{background:#fff;border:none;color:var(--primary-d)}
+.tkstats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+.tkstat{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 15px}
+.tkstat .n{font-size:27px;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.tkstat .n small{font-size:15px;font-weight:800;opacity:.85}
+.tkstat .l{font-size:12.5px;font-weight:650;color:rgba(255,255,255,.8);margin-top:5px;line-height:1.3}
+.tknote{margin-top:16px;font-size:14px;color:rgba(255,255,255,.85);max-width:74ch;line-height:1.55}
+.tknote b,.tkpace b{color:#fff}
+.tkpace{margin-top:12px;background:rgba(255,255,255,.12);border-radius:12px;padding:11px 14px;
+  font-size:13.5px;color:rgba(255,255,255,.85);line-height:1.5}
+.tkflag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;
+  background:rgba(255,255,255,.16);border-radius:20px;padding:4px 11px;margin-top:12px}
+
+/* ---- Step 2: weekly checklist ---- */
+.checkwrap{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px 22px;box-shadow:var(--shadow)}
+.checkhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.checkhead .chkcount{font-size:12.5px;font-weight:800;color:var(--green-d);background:var(--green-l);
+  border-radius:20px;padding:5px 11px;white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
+.checklist{display:flex;flex-direction:column;gap:10px}
+.chk{display:flex;align-items:flex-start;gap:13px;text-align:left;background:var(--surface-2);
+  border:1.5px solid var(--border);border-radius:14px;padding:14px 15px;transition:.16s var(--ease);width:100%}
+.chk:hover{border-color:var(--border-2);transform:translateY(-1px)}
+.chk .box{flex:none;width:24px;height:24px;border-radius:8px;border:2px solid var(--border-2);
+  background:var(--surface);display:flex;align-items:center;justify-content:center;color:#fff;
+  transition:.18s var(--ease);margin-top:1px}
+.chk .box svg{opacity:0;transform:scale(.4);transition:.18s var(--ease)}
+.chk.done{border-color:var(--green);background:var(--green-l)}
+.chk.done .box{background:var(--green);border-color:var(--green);animation:pop .3s var(--ease)}
+.chk.done .box svg{opacity:1;transform:scale(1)}
+.chk .txt{font-size:14px;color:var(--ink);line-height:1.5}
+.chk .txt b{font-weight:750}
+.chk.done .txt{color:var(--ink-3);text-decoration:line-through;text-decoration-color:rgba(21,163,74,.5)}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+
+/* ---- kickers, takeaways, full-bleed band ---- */
+.kicker{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);margin:30px 0 13px}
+.kicker .kdot{width:9px;height:9px;border-radius:50%;flex:none}
+.takeaway{display:flex;gap:9px;align-items:flex-start;margin-top:13px;padding:11px 13px;border-radius:12px;
+  background:var(--surface-2);border:1px solid var(--border);font-size:13px;color:var(--ink-2);line-height:1.5}
+.takeaway b{color:var(--ink);font-weight:800}
+.takeaway .tico{color:var(--primary);font-weight:900;flex:none;line-height:1.4}
+.bleed{background:#ecedf7;box-shadow:0 0 0 100vmax #ecedf7;clip-path:inset(0 -100vmax)}
+
+/* ---- self-study vs course duel ---- */
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.duelcol{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:14px 15px;
+  text-align:left;transition:.16s var(--ease);width:100%;cursor:pointer}
+.duelcol:hover{border-color:var(--border-2);transform:translateY(-1px)}
+.duelcol .dh{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;border-radius:20px;
+  padding:4px 10px;margin-bottom:10px}
+.duelrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:7px 0;
+  border-top:1px solid var(--border);font-size:12.5px;color:var(--ink-2);font-weight:650}
+.duelrow .dn{font-size:19px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* ---- reveal-on-scroll, clickable bar rows, confetti ---- */
+.rise{opacity:0;transform:translateY(18px);transition:opacity .55s var(--ease),transform .55s var(--ease)}
+.rise.grown{opacity:1;transform:none}
+.chartgrid .rise:nth-child(2){transition-delay:.1s}
+.actiongrid .rise:nth-child(2){transition-delay:.09s}
+.actiongrid .rise:nth-child(3){transition-delay:.18s}
+#doFirst.rise{transition-delay:.08s}
+#planWeek .rise{transition-delay:.16s}
+.barbtn{cursor:pointer;border-radius:10px;padding:4px 6px;margin:-4px -6px;transition:.14s var(--ease)}
+.barbtn:hover{background:var(--surface-2)}
+.confetti{position:absolute;left:50%;top:34%;width:0;height:0;z-index:3;pointer-events:none}
+.confetti i{position:absolute;width:9px;height:13px;border-radius:2px;opacity:0;
+  animation:conf 1s var(--ease) forwards;animation-delay:var(--cd)}
+@keyframes conf{0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--cx),var(--cy)) rotate(var(--cr))}}
 
 /* ---- band picker (explore tab) ---- */
 .bands{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 auto;max-width:760px}
@@ -642,9 +753,23 @@ footer a{color:var(--ink-2);font-weight:600}
   .navfull{display:none}
   .navshort{display:inline}
   .about{padding-left:20px;padding-right:20px}
-  .hero{padding:34px 0 8px}
-  .qopts{grid-template-columns:1fr 1fr}
-  .planhead .ptop{flex-direction:column}
+  .hero{padding:34px 0 8px;overflow:hidden}
+  .blob{filter:blur(46px);opacity:.4}
+  .stepcard{padding:19px 16px 16px}
+  .qtitle{font-size:18px}
+  .qopts{grid-template-columns:1fr 1fr;gap:9px}
+  .qopts.wide{grid-template-columns:1fr}
+  .ticket{padding:20px 17px;border-radius:18px}
+  .tkstats{gap:8px;margin-top:18px}
+  .tkstat{padding:11px 10px}
+  .tkstat .n{font-size:19px}
+  .tkstat .n small{font-size:11px}
+  .tkstat .l{font-size:11px}
+  .checkwrap{padding:16px}
+  .kicker{margin:24px 0 11px}
+  .duel{gap:9px}
+  .duelcol{padding:12px 11px}
+  .duelrow .dn{font-size:16px}
   .primaryrec{grid-template-columns:1fr;padding:18px}
   .primaryrec .actbtn{width:100%}
   .evidence>summary{padding:18px}
@@ -653,26 +778,25 @@ footer a{color:var(--ink-2);font-weight:600}
   .band{padding:16px 17px}
   .band .bblurb{min-height:0}
   .band .barrow{opacity:1;transform:none}
-  .actiongrid{grid-template-columns:1fr;gap:12px}
+  .actiongrid{grid-template-columns:1fr;gap:13px}
   .actioncard{min-height:0}
-  .signalgrid{grid-template-columns:1fr;gap:12px}
-  .statrow{grid-template-columns:1fr 1fr;gap:10px}
+  .statrow{grid-template-columns:1fr 1fr;gap:11px}
   .insightstats{grid-template-columns:1fr 1fr}
   .insightgrid{grid-template-columns:1fr}
   .grid2{grid-template-columns:1fr}
   .grid2>.panel{min-height:0;height:auto}
   .secinsights{grid-template-columns:1fr}
-  .cards,#browseList{grid-template-columns:1fr}
+  .cards,#browseList{grid-template-columns:1fr;gap:13px}
   .dist{height:310px;min-height:310px}
   .heatmap{grid-template-columns:minmax(104px,1.1fr) repeat(3,1fr);gap:5px}
   .hmhead,.hmcell,.hmlabel{min-height:38px}
   .hmhead{font-size:10px}
   .hmlabel,.hmcell{font-size:11px}
-  section.block{padding:26px 0}
+  section.block{padding:30px 0}
   .panel{padding:18px}
   .dhero .big{font-size:40px}
   .spark{height:250px;min-height:250px}
-  .chartgrid{grid-template-columns:1fr;gap:12px}
+  .chartgrid{grid-template-columns:1fr;gap:14px}
   .chartcard{min-height:0;padding:16px}
   .chartbox{height:210px}
   .chartbox.tall{height:248px}
@@ -688,6 +812,12 @@ footer a{color:var(--ink-2);font-weight:600}
   .jumparrow{min-width:38px;height:30px}
   .jumparrow .jgain{font-size:10px;padding:1px 7px}
   .legend{gap:11px;font-size:11.5px}
+}
+@media(max-width:360px){
+  .wrap{padding:0 14px}
+  .bar .wrap{gap:4px}
+  .logo{font-size:16px}
+  .nav button{font-size:12.5px;padding:7px 8px}
 }
 @media(prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
@@ -707,9 +837,10 @@ footer a{color:var(--ink-2);font-weight:600}
 <main id="view-plan">
   <div class="wrap">
     <section class="hero">
+      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
       <span class="eyebrow"><span class="pulse"></span>__NDEB__ real GMAT debriefs</span>
-      <h1>Find your score path from people who got there</h1>
-      <p class="lede">Answer four quick questions. We match you to debriefs from people who started near your level and reached your target.</p>
+      <h1>Your <em>score path</em>, from people who already made the jump</h1>
+      <p class="lede">Four quick taps. We match you with real stories from people who started where you are and hit your target — then turn them into a plan.</p>
     </section>
     <div class="quiz" id="quiz"></div>
     <div id="planResult"></div>
@@ -719,9 +850,10 @@ footer a{color:var(--ink-2);font-weight:600}
 <main id="view-explore" class="hidden">
   <div class="wrap">
     <section class="hero" style="padding:44px 0 4px">
+      <span class="blob b1"></span><span class="blob b2"></span>
       <span class="eyebrow"><span class="pulse"></span>__NDEB__ real GMAT debriefs</span>
-      <h1>Explore the data</h1>
-      <p class="lede">Every debrief, visualised. Filter by score band, source, and resource to see how scores, sections, prep time, and tactics move together.</p>
+      <h1>Explore <em>the data</em></h1>
+      <p class="lede">Every debrief, charted. Filter it, tap any bar to open the stories behind it, and read the takeaway under each chart.</p>
     </section>
   </div>
 
@@ -729,61 +861,99 @@ footer a{color:var(--ink-2);font-weight:600}
     <div class="filterbar" id="filterbar"></div>
     <div class="statrow" id="xstat"></div>
 
+    <div class="kicker" style="margin-top:8px"><span class="kdot" style="background:var(--primary)"></span>Scores</div>
     <div class="chartgrid">
-      <div class="chartcard">
+      <div class="chartcard rise">
         <h3>Score distribution <span class="hint" id="xdistHint"></span></h3>
         <p class="psub">Official total score across the filtered set.</p>
         <div class="chartbox" id="xdist"></div>
+        <div class="takeaway hidden" id="xdistTake"></div>
       </div>
-      <div class="chartcard">
+      <div class="chartcard rise">
         <h3>Where each tier is weakest</h3>
         <p class="psub">Median Q / V / DI score within each target band.</p>
         <div class="chartbox" id="xsection"></div>
         <div class="legend" id="xsectionLeg"></div>
+        <div class="takeaway hidden" id="xsectionTake"></div>
       </div>
     </div>
 
+    <div class="kicker"><span class="kdot" style="background:var(--coral)"></span>The jump</div>
     <div class="chartgrid">
-      <div class="chartcard">
-        <h3>How big a jump is realistic?</h3>
+      <div class="chartcard rise">
+        <h3>How big a jump is realistic? <span class="hint">tap a bar for the stories</span></h3>
         <p class="psub">Start-to-official point gain, where a start score was reported.</p>
         <div class="chartbox" id="xgain"></div>
+        <div class="takeaway hidden" id="xgainTake"></div>
       </div>
-      <div class="chartcard">
-        <h3>Most-used resources</h3>
-        <p class="psub">Share of debriefs naming each — popularity, not proof of effectiveness.</p>
-        <div class="hbarbox" id="xres"></div>
-      </div>
-    </div>
-
-    <div class="chartgrid">
-      <div class="chartcard">
+      <div class="chartcard rise">
         <h3>Prep time vs score gain</h3>
         <p class="psub">Each dot is a debrief; the dashed line is the overall trend.</p>
         <div class="chartbox tall" id="xscatter"></div>
-      </div>
-      <div class="chartcard">
-        <h3>Does more prep time help?</h3>
-        <p class="psub">Median total score by weeks of prep.</p>
-        <div class="chartbox" id="xprep"></div>
+        <div class="takeaway hidden" id="xscatterTake"></div>
       </div>
     </div>
 
+    <div class="kicker"><span class="kdot" style="background:var(--green)"></span>Time &amp; attempts</div>
+    <div class="chartgrid">
+      <div class="chartcard rise">
+        <h3>Does more prep time help? <span class="hint">tap a bar for the stories</span></h3>
+        <p class="psub">Median total score by weeks of prep.</p>
+        <div class="chartbox" id="xprep"></div>
+        <div class="takeaway hidden" id="xprepTake"></div>
+      </div>
+      <div class="chartcard rise">
+        <h3>Do retakes pay off? <span class="hint">tap a bar for the stories</span></h3>
+        <p class="psub">Median official score by attempt number, where reported.</p>
+        <div class="chartbox" id="xattempts"></div>
+        <div class="takeaway hidden" id="xattemptsTake"></div>
+      </div>
+    </div>
+
+    <div class="kicker"><span class="kdot" style="background:var(--amber)"></span>What they used</div>
+    <div class="chartgrid">
+      <div class="chartcard rise">
+        <h3>Most-used resources <span class="hint">tap a row for the stories</span></h3>
+        <p class="psub">Share of debriefs naming each — popularity, not proof of effectiveness.</p>
+        <div class="hbarbox" id="xres"></div>
+        <div class="takeaway hidden" id="xresTake" style="margin-top:auto"></div>
+      </div>
+      <div class="chartcard rise">
+        <h3>Self-study vs paid course <span class="hint">tap a column for the stories</span></h3>
+        <p class="psub">Self-study = only free material (Official Guide, official mocks, GMAT Club…).</p>
+        <div class="duel" id="xcompare"></div>
+        <div class="takeaway hidden" id="xcompareTake" style="margin-top:auto"></div>
+      </div>
+    </div>
+
+    <div class="kicker"><span class="kdot" style="background:var(--violet)"></span>Tactics</div>
     <div class="chartgrid one">
-      <div class="chartcard">
+      <div class="chartcard rise">
         <h3>Tactic adoption by score band <span class="hint">tap a cell for examples</span></h3>
         <p class="psub">Share of each band that mentions a recurring tactic.</p>
         <div class="heatmap" id="xheat" style="margin-top:4px"></div>
+        <div class="takeaway hidden" id="xheatTake"></div>
       </div>
     </div>
 
-    <section class="block" id="xbrowse">
+    <section class="block bleed" id="xbrowse" style="margin-top:34px">
+      <div class="kicker" style="margin-top:0"><span class="kdot" style="background:var(--green)"></span>Read the stories</div>
       <div class="shead"><div>
         <h2>Browse the filtered debriefs</h2>
         <p class="sub" id="xbrowseSub"></p>
       </div></div>
+      <div class="tools">
+        <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="xq" type="search" placeholder="Search titles or resources…" autocomplete="off"></div>
+        <select class="pick" id="xsort">
+          <option value="score">Highest score</option>
+          <option value="new">Newest first</option>
+          <option value="gain">Biggest gain</option>
+          <option value="detail">Most detailed</option>
+        </select>
+      </div>
       <div id="xbrowseList" class="cards"></div>
-      <div class="empty hidden" id="xbrowseEmpty">No debriefs match these filters. Use Reset above to clear them.</div>
+      <div class="empty hidden" id="xbrowseEmpty">No debriefs match. Clear the search box or use Reset in the filter bar.</div>
       <button class="morebtn hidden" id="xbrowseMore" onclick="xShowMore()">Show more <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     </section>
   </div>
@@ -796,8 +966,10 @@ footer a{color:var(--ink-2);font-weight:600}
   <p>Every debrief links back to its original public post on Reddit's r/GMAT and GMAT Club. We only summarise — the source is always one tap away so you can read it in full and judge for yourself.</p>
   <h3>Independence</h3>
   <p>PrepSignals is independent and isn't affiliated with GMAC, any prep company, or any course. Resources are named because the original posters named them, not because anyone paid to appear. Debriefs that read like promotions are flagged "Maybe Promo" so you can weigh them.</p>
+  <h3>How to read the colors</h3>
+  <p>Colors mean the same thing everywhere on the site: <b>blue</b> is Quant, <b>purple</b> is Verbal, <b>teal</b> is Data Insights, <b>amber</b> is resources, <b>green</b> is timing and test-day execution, and <b>coral</b> is score gains.</p>
   <h3>Privacy</h3>
-  <p>No accounts, no login, no backend. Your four answers on My Score Path are saved only in your own browser's local storage so a return visit skips the questions — nothing is sent to a server, and nothing identifies you. We use Vercel's privacy-friendly aggregate analytics to see which paths and stories are useful.</p>
+  <p>No accounts, no login, no backend. Your four answers and your checklist ticks on My Score Path are saved only in your own browser's local storage so a return visit picks up where you left off — nothing is sent to a server, and nothing identifies you. We use Vercel's privacy-friendly aggregate analytics to see which paths and stories are useful.</p>
   <h3>Feedback</h3>
   <p>If you want to see more features, notice something wrong, or have feedback, please email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
   <p>If you are the author of a post represented in this project and want it removed or corrected, contact <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
@@ -858,6 +1030,7 @@ let state={band:'b2',focus:'auto'};
 let plan={cur:null,tgt:null,wk:null,focus:null};
 let showIntakeForm=true;
 let exploreInit=false;
+let _justBuilt=false;
 
 function track(name,props){try{if(typeof window.va==='function')window.va('event',{name,data:props||{}});}catch(e){}}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -944,7 +1117,7 @@ function topParsedStrats(rows,predicate,limit){
     .slice(0,limit||5).map(([k,n])=>{const i=k.indexOf('|');return {sec:k.slice(0,i),label:k.slice(i+1),n};});
 }
 function rowsForParsed(rows,item){return item?rowsForStrat(rows,item.sec,item.label):rows;}
-const SECCOL={q:['--blue','--blue-l'],v:['--violet','--violet-l'],di:['--amber','--amber-l']};
+const SECCOL={q:['--blue','--blue-l'],v:['--violet','--violet-l'],di:['--teal','--teal-l']};
 function renderSectionInsights(containerId,rows){
   const el=document.getElementById(containerId);if(!el)return;
   const exclude=new Set();
@@ -1015,7 +1188,7 @@ function primaryRecommendation(peers,wk){
       h:'Tighten your timed review loop',
       p:`You said timing or test day feels hardest. Make the next block about timed sets, official-mock review, and move-on rules before adding broad content review.${weak?` Keep ${weak.name} as your checkpoint because it is the lowest median split in this cohort.`:''}`,
       m:genTop?`<b>${pct(genTop[1],peers.length)}%</b> of matching debriefs mention ${esc(label)}.`:`Use the insight drawer examples to copy concrete pacing rules.`,
-      a:'Open timing insight',
+      a:'See the evidence',
       kind:'timing'
     };
   }
@@ -1028,52 +1201,62 @@ function primaryRecommendation(peers,wk){
     h:`Start with ${secName}`,
     p:`${because} Use your next study block to sort misses by concept, timing, and careless errors, then drill the pattern that repeats.`,
     m:top?`<b>${pct(top[1],peers.length)}%</b> of matching debriefs mention ${esc(top[0])}.`:`<b>${rowsForSection(peers,secKey).length}</b> matching examples include ${esc(secName)} details.`,
-    a:`Open ${secName} insight`,
+    a:'See the evidence',
     kind:'section'
   };
 }
 
-function pickPlan(field,key){plan[field]=key;renderQuiz();}
-function renderQuiz(){
-  const el=document.getElementById('quiz');
+let quizStep=0;
+const STEPQ=[
+  {f:'cur',ico:'📍',t:'Where are you scoring now?',s:'Your latest practice test or diagnostic total — a guess is fine.',wide:true,
+    opts:()=>CURB.map(c=>({k:c.key,l:c.label,s:c.name||''}))},
+  {f:'tgt',ico:'🎯',t:'What score are you aiming for?',s:'Pick your target band.',wide:true,
+    opts:()=>BANDS.map(b=>({k:b.key,l:b.label,s:b.name+' · '+b.count+' stories'}))},
+  {f:'wk',ico:'🗓️',t:'How long until test day?',s:'Roughly — this only shapes pacing advice, not the target.',wide:false,
+    opts:()=>WEEKB.map(w=>({k:w.key,l:w.label,s:''}))},
+  {f:'focus',ico:'🧩',t:'What feels hardest right now?',s:'Your plan starts there. Pick “Not sure” and the data will choose.',wide:true,
+    opts:()=>FOCUS.map(f=>({k:f.key,l:f.label,s:f.sub}))},
+];
+function pickPlan(field,key){
+  plan[field]=key;
+  const last=quizStep>=STEPQ.length-1;
+  renderQuiz(false);
+  if(!last)setTimeout(()=>{quizStep=Math.min(quizStep+1,STEPQ.length-1);renderQuiz(true);},RM?0:230);
+}
+function stepBack(){if(quizStep>0){quizStep--;renderQuiz(true);}}
+function renderQuiz(animate){
+  const el=document.getElementById('quiz');if(!el)return;
+  const q=STEPQ[quizStep],answered=STEPQ.filter(st=>plan[st.f]).length;
   const match=(plan.tgt&&plan.cur)?peersFor(plan.tgt,plan.cur):null;
+  const ready=plan.cur&&plan.tgt&&plan.wk&&plan.focus;
   el.innerHTML=`
-    <div class="qgroup">
-      <div class="qtitle"><span class="qn">1</span> Where are you scoring now?</div>
-      <div class="qsub">Your most recent practice test or diagnostic total.</div>
-      <div class="qopts">${CURB.map(c=>`<button type="button" class="qopt ${plan.cur===c.key?'on':''}" onclick="pickPlan('cur','${c.key}')"><div class="ol">${esc(c.label)}</div><div class="os">${esc(c.name||'')}</div></button>`).join('')}</div>
-    </div>
-    <div class="qgroup">
-      <div class="qtitle"><span class="qn">2</span> What score are you aiming for?</div>
-      <div class="qsub">Pick the band you are targeting.</div>
-      <div class="qopts">${BANDS.map(b=>`<button type="button" class="qopt ${plan.tgt===b.key?'on':''}" onclick="pickPlan('tgt','${b.key}')"><div class="ol">${esc(b.label)}</div><div class="os">${esc(b.name)}</div></button>`).join('')}</div>
-    </div>
-    <div class="qgroup">
-      <div class="qtitle"><span class="qn">3</span> How long until test day?</div>
-      <div class="qsub">Roughly — this only shapes pacing advice, not the target.</div>
-      <div class="qopts">${WEEKB.map(w=>`<button type="button" class="qopt ${plan.wk===w.key?'on':''}" onclick="pickPlan('wk','${w.key}')"><div class="ol">${esc(w.label)}</div></button>`).join('')}</div>
-    </div>
-    <div class="qgroup">
-      <div class="qtitle"><span class="qn">4</span> What feels hardest right now?</div>
-      <div class="qsub">This decides the first recommendation. Pick Not sure if you want the data to choose.</div>
-      <div class="qopts">${FOCUS.map(f=>`<button type="button" class="qopt ${plan.focus===f.key?'on':''}" onclick="pickPlan('focus','${f.key}')"><div class="ol">${esc(f.label)}</div><div class="os">${esc(f.sub)}</div></button>`).join('')}</div>
-    </div>
-    ${match?`<div class="quizmatch">${match.matched?`<b>${match.peers.length}</b> debriefs closely match this so far.`:`Not many exact matches yet — we will use the full ${esc(bandOf(plan.tgt).label)} band (<b>${match.rows.length}</b> debriefs) instead.`}</div>`:''}
-    <div class="quizsubmit-wrap">
-      <button type="button" class="quizsubmit" id="quizSubmit" ${(plan.cur&&plan.tgt&&plan.wk&&plan.focus)?'':'disabled'} onclick="submitPlan()">Show my score path
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
+    <div class="stepcard">
+      <div class="stepbar">
+        <div class="track"><div class="fill" style="width:${Math.round(100*answered/STEPQ.length)}%"></div></div>
+        <span class="stepct">${quizStep+1} of ${STEPQ.length}</span>
+      </div>
+      <div class="${animate&&!RM?'stepin':''}">
+        <div class="qtitle"><span class="qico">${q.ico}</span> ${q.t}</div>
+        <div class="qsub">${q.s}</div>
+        <div class="qopts${q.wide?' wide':''}">${q.opts().map(o=>`<button type="button" class="qopt ${plan[q.f]===o.k?'on':''}" onclick="pickPlan('${q.f}','${o.k}')"><div class="ol">${esc(o.l)}</div>${o.s?`<div class="os">${esc(o.s)}</div>`:''}</button>`).join('')}</div>
+      </div>
+      <div class="stepnav">
+        ${quizStep>0?`<button type="button" class="stepback" onclick="stepBack()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back</button>`:'<span></span>'}
+        ${quizStep===STEPQ.length-1?`<button type="button" class="quizsubmit" id="quizSubmit" ${ready?'':'disabled'} onclick="submitPlan()">Build my plan
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>`:''}
+      </div>
+      ${match?`<div class="quizmatch"><span class="pulse"></span>${match.matched?`<b>${match.peers.length}</b> stories closely match your path so far.`:`Not many exact matches yet — we'll use all <b>${match.rows.length}</b> stories at your target instead.`}</div>`:''}
     </div>`;
 }
 function submitPlan(){
   if(!(plan.cur&&plan.tgt&&plan.wk&&plan.focus))return;
-  savePlanLS();showIntakeForm=false;
+  savePlanLS();showIntakeForm=false;_justBuilt=true;
   history.replaceState({},'', '?p='+plan.cur+'-'+plan.tgt+'-'+plan.wk+'-'+plan.focus);
   track('intake_submit',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus});
   renderPlanView();
   scrollTo({top:0,behavior:RM?'auto':'smooth'});
 }
-function editPlan(){showIntakeForm=true;track('intake_edit',{});renderPlanView();}
+function editPlan(){showIntakeForm=true;quizStep=0;track('intake_edit',{});renderPlanView();}
 
 function renderPlanView(){
   const q=document.getElementById('quiz'),r=document.getElementById('planResult');
@@ -1087,15 +1270,7 @@ function renderPlanResult(){
   const{rows,peers,matched}=peersFor(plan.tgt,plan.cur);
   const b=bandOf(plan.tgt),cur=curBucketOf(plan.cur),wk=wkBucketOf(plan.wk);
   const prep=peers.map(d=>d.prep_weeks).filter(x=>x!=null),gains=peers.map(d=>d.gain).filter(x=>x!=null);
-  const pace=paceNote(peers,wk),focus=focusOf(plan.focus),rec=primaryRecommendation(peers,wk);
-  const curShort=cur.label.replace(' – ','-'),targetShort=b.label.replace(' – ','-');
-  const wkShort=wk.label.replace('Less than 4 weeks','<4w').replace('13+ weeks','13w+').replace(/ – /g,'-').replace(' weeks','w');
-  const stats=[
-    {v:curShort,l:'current range',cls:''},
-    {v:targetShort,l:'target range',cls:'green'},
-    {v:wkShort,l:'timeline',cls:''},
-    {v:peers.length,l:matched?'closest matches':'band-wide sample',cls:'coral'},
-  ];
+  const pace=paceNote(peers,wk),rec=primaryRecommendation(peers,wk);
   // score-band jump framing: how the current bucket reaches the target band
   const startersCur=DEB.filter(d=>d.start!=null&&cur&&d.start>=cur.lo&&d.start<=cur.hi);
   const reachedTgt=startersCur.filter(d=>inBand(d,b));
@@ -1104,33 +1279,38 @@ function renderPlanResult(){
   const medStart=pStart.length?Math.round(median(pStart)):null,medTot=pTot.length?Math.round(median(pTot)):null;
   const medGain=gains.length?Math.round(median(gains)):null,medPrep=prep.length?fmt(median(prep)):null;
   let jnote='';
-  if(reachPct!=null)jnote+=`Of <b>${startersCur.length}</b> debriefs that started in ${esc(cur.label)}, <b>${reachPct}%</b> reached ${esc(b.label)}. `;
-  if(medStart&&medTot)jnote+=`In your cohort the typical path was <b>${medStart} → ${medTot}</b>${medGain?` (+${medGain})`:''}${medPrep?` over <b>${medPrep}w</b>`:''}.`;
-  if(!jnote)jnote=`Few debriefs report a start score for ${esc(cur.label)} yet — use the ${esc(b.label)} score-band insights below as your guide.`;
+  if(reachPct!=null)jnote+=`Of <b>${startersCur.length}</b> people who started in ${esc(cur.label)}, <b>${reachPct}%</b> reached ${esc(b.label)}. `;
+  if(medStart&&medTot)jnote+=`The typical path for people like you was <b>${medStart} → ${medTot}</b>${medGain?` (+${medGain})`:''}${medPrep?` over <b>${medPrep} weeks</b>`:''}.`;
+  if(!jnote)jnote=`Few stories report a start score in ${esc(cur.label)} yet — lean on the ${esc(b.label)} insights below.`;
+  const tkstats=[
+    reachPct!=null?{v:reachPct,suf:'%',l:'made this exact jump'}:null,
+    medGain!=null?{v:medGain,pre:'+',l:'typical score gain'}:null,
+    medPrep!=null?{v:medPrep,suf:'w',l:'typical prep time'}:null,
+    {v:peers.length,l:matched?'stories match your path':'stories at your target'},
+  ].filter(Boolean).slice(0,3);
+  // "do this first" card is colored by what it recommends (see color system)
+  const secKey=selectedSectionKey(peers);
+  const prPair=rec.kind==='timing'?['--green','--green-l']:SECCOL[secKey];
 
   document.getElementById('planResult').innerHTML=`
-    <div class="planhead">
-      <div class="ptop">
-        <div><h2>Path summary: ${esc(cur.label)} &rarr; ${esc(b.label)}</h2>
-          <p>Built from ${matched?`<b>${peers.length}</b> debriefs that started around your level and reached ${esc(b.label)}`:`the full ${esc(b.label)} band — not enough close starting-score matches yet, so this is band-wide`}. Your first focus: <b>${esc(focus.label)}</b>.</p>
-          ${!matched?`<span class="matchflag">Band-wide data — few exact starting-score matches</span>`:''}
-        </div>
-        <button class="editlink" type="button" onclick="editPlan()">Change my answers</button>
+    <section class="ticket rise" id="ticket">
+      <div class="tktop">
+        <span class="ey">✦ Your score path</span>
+        <button class="tkedit" type="button" onclick="editPlan()">Change answers</button>
       </div>
-      <div class="statrow" style="margin-top:18px">${stats.map(s=>`<div class="stat ${s.cls}"><div class="v">${s.v}</div><div class="l">${s.l}</div></div>`).join('')}</div>
-      <div class="bandjump">
-        <div class="jumprow">
-          <div class="jumpnode"><div class="jn">${esc(cur.label)}</div><div class="jl">You now</div></div>
-          <div class="jumparrow"><div class="jtrack"></div><div class="jhead"></div>${medGain?`<div class="jgain">+${medGain} typical</div>`:''}</div>
-          <div class="jumpnode target"><div class="jn">${esc(b.label)}</div><div class="jl">Target</div></div>
-        </div>
-        <div class="jnote">${jnote}</div>
+      <div class="jumprow">
+        <div class="jumpnode"><div class="jn">${esc(cur.label)}</div><div class="jl">You now</div></div>
+        <div class="jumparrow"><div class="jtrack"></div><div class="jhead"></div>${medGain?`<div class="jgain">+${medGain} typical</div>`:''}</div>
+        <div class="jumpnode target"><div class="jn">${esc(b.label)}</div><div class="jl">Target</div></div>
       </div>
-      ${pace?`<div class="pacecall">${pace}</div>`:''}
-    </div>
-    <section class="primaryrec" id="doFirst">
+      <div class="tkstats" style="grid-template-columns:repeat(${tkstats.length},1fr)">${tkstats.map(st=>`<div class="tkstat"><div class="n">${st.pre||''}<span data-cnt="${st.v}">${st.v}</span>${st.suf?`<small>${st.suf}</small>`:''}</div><div class="l">${st.l}</div></div>`).join('')}</div>
+      <p class="tknote">${jnote}</p>
+      ${pace?`<div class="tkpace">${pace}</div>`:''}
+      ${!matched?`<span class="tkflag">Few exact starting-score matches — showing everyone at your target</span>`:''}
+    </section>
+    <section class="primaryrec rise" id="doFirst" style="--pr:var(${prPair[0]});--pr-l:var(${prPair[1]})">
       <div>
-        <span class="ey">Do this first</span>
+        <span class="ey">Step 1 · Today</span>
         <h3>${esc(rec.h)}</h3>
         <p>${rec.p}</p>
         <div class="metric">${rec.m}</div>
@@ -1139,29 +1319,35 @@ function renderPlanResult(){
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </section>
-    <section class="block" id="planLevers">
-      <div class="shead"><div><h2>Your 3 levers</h2><p class="sub">Use these as the working plan: one section focus, one practice loop, and one resource stack, each summarized before the example debriefs.</p></div></div>
-      <div class="actiongrid" id="planActions"></div>
+    <section class="block" id="planWeek" style="padding-bottom:0">
+      <div class="checkwrap rise">
+        <div class="checkhead">
+          <div><h3 style="font-size:19px">Step 2 · Your first week</h3>
+            <p style="font-size:13.5px;color:var(--ink-2);margin-top:3px">Four tasks pulled from what worked for people on your path. Ticks save on this device.</p></div>
+          <span class="chkcount" id="chkCount"></span>
+        </div>
+        <div class="checklist" id="planChecklist"></div>
+      </div>
     </section>
-    <section class="block" id="planSignals">
-      <div class="shead"><div><h2>What the debriefs are telling you</h2><p class="sub">Three signals from the matched cohort, summarized before you read individual stories.</p></div></div>
-      <div class="signalgrid" id="planSignalsGrid"></div>
+    <section class="block" id="planLevers">
+      <div class="shead"><div><h2>Step 3 · Where your points will come from</h2><p class="sub">Three focus areas, ranked by the data. Tap “See the evidence” for the charts, tactics, and quotes behind each one.</p></div></div>
+      <div class="actiongrid" id="planActions"></div>
     </section>
     <details class="evidence" id="planEvidence">
       <summary>
-        <div><h2>Example debriefs</h2>
-          <p class="sumsub">Optional supporting stories closest to your starting point, target, and timeline.</p></div>
+        <div><h2>Stories like yours</h2>
+          <p class="sumsub">Six debriefs from people closest to your start, target, and timeline — worth a skim tonight.</p></div>
         <span class="sumicon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
       </summary>
       <div class="evidencebody">
         <div class="cards" id="planCards"></div>
-        <button class="morebtn" onclick="openTargetExplore()">Explore ${esc(b.label)} data <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <button class="morebtn" onclick="openTargetExplore()">Explore all ${esc(b.label)} data <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
       </div>
     </details>
     <details class="evidence" id="planAnalytics">
       <summary>
-        <div><h2>Explore the evidence</h2>
-          <p class="sumsub">Target-band charts from all <b>${rows.length}</b> ${esc(b.label)} debriefs. Open this when you want the deeper data behind the path.</p></div>
+        <div><h2>Dig into the numbers</h2>
+          <p class="sumsub">Charts built from all <b>${rows.length}</b> ${esc(b.label)} debriefs — open this when you want the data behind the plan.</p></div>
         <span class="sumicon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
       </summary>
       <div class="evidencebody">
@@ -1205,11 +1391,14 @@ function renderPlanResult(){
       </div>
     </details>`;
   renderPlanActions(peers,b);
-  renderPlanSignals(peers,b);
-  document.getElementById('planInsSub').innerHTML=`Aggregated from the same <b>${peers.length}</b> debriefs behind your plan — no need to open each one individually.`;
+  renderChecklist(peers);
+  document.getElementById('planInsSub').innerHTML=`Aggregated from the same <b>${peers.length}</b> stories behind your plan — no need to open each one.`;
   renderSectionInsights('planSecInsights',peers);
   renderPlanAnalytics();
   document.getElementById('planCards').innerHTML=bestExamples(peers,6).map(debCardHTML).join('');
+  observeGrow(document.getElementById('planResult'));
+  animateCounts(document.getElementById('ticket'));
+  if(_justBuilt){_justBuilt=false;confettiBurst(document.getElementById('ticket'));}
   track('plan_view',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus,matched,sample:peers.length});
 }
 function planAnalyticsShown(){
@@ -1222,7 +1411,7 @@ function renderPlanAnalytics(){
   if(document.getElementById('planDist'))paint('planDist',svgHist(DEB,{highlight:new Set([b.key])}));
   const split=document.getElementById('planSplit');
   if(split){
-    const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
+    const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--teal)'};
     const slo=55,shi=90,sscale=v=>Math.max(2,Math.min(100,Math.round(100*(v-slo)/(shi-slo))));
     const med=sectionMedians(rows),weak=weakestSection(rows);
     split.innerHTML=[['q','Quant'],['v','Verbal'],['di','Data Insights']].map(([k,name])=>{
@@ -1267,7 +1456,7 @@ function noteHTML(quotes,color){
   return `<ul class="notelist" style="--bullet:${color||'var(--primary)'}">${quotes.map(q=>`<li>${esc(q.text)}</li>`).join('')}</ul>`;
 }
 function sectionBalanceHTML(rows,highlight){
-  const med=sectionMedians(rows),cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
+  const med=sectionMedians(rows),cm={q:'var(--blue)',v:'var(--violet)',di:'var(--teal)'};
   const slo=55,shi=90,scale=v=>Math.max(2,Math.min(100,Math.round(100*(v-slo)/(shi-slo))));
   const html=[['q','Quant'],['v','Verbal'],['di','Data Insights']].map(([k,name])=>{
     const m=med[k]!=null?Math.round(med[k]):null;if(m==null)return '';
@@ -1427,20 +1616,61 @@ function buildPlanInsight(kind,peers,b){
   if(kind==='timing')return planTimingInsight(peers,b);
   return planHabitInsight(peers,b);
 }
-function renderPlanSignals(peers,b){
-  const el=document.getElementById('planSignalsGrid');if(!el)return;
-  const secKey=selectedSectionKey(peers),secName=sectionLabel(secKey),secTop=topStrats(peers,sectionCode(secKey),1)[0];
+/* ---- Step 2: weekly checklist (persisted per plan in localStorage) ---- */
+const LS_CHECKS='ps_checks_v1';
+function planSig(){return [plan.cur,plan.tgt,plan.wk,plan.focus].join('-');}
+function loadChecks(){try{const o=JSON.parse(localStorage.getItem(LS_CHECKS));if(o&&o.sig===planSig()&&Array.isArray(o.done))return o.done;}catch(e){}return [];}
+function saveChecks(done){try{localStorage.setItem(LS_CHECKS,JSON.stringify({sig:planSig(),done}));}catch(e){}}
+function checklistItems(peers){
+  const secName=sectionLabel(selectedSectionKey(peers));
   const genTop=topStrats(peers,'G',1)[0],resTop=topResources(peers,1)[0];
-  const cards=[
-    {k:'Bottleneck signal',h:`${secName} is the first lever`,p:secTop?`${pct(secTop[1],peers.length)}% mention ${secTop[0]}.`:`Use ${secName} as the next diagnostic checkpoint.`,kind:'section',c:'var(--blue)',l:'var(--blue-l)'},
-    {k:'Process signal',h:genTop?genTop[0]:'Review loop matters',p:genTop?`${pct(genTop[1],peers.length)}% name this habit.`:'Look for mock review, error logs, and targeted drilling.',kind:'habit',c:'var(--primary)',l:'var(--primary-l)'},
-    {k:'Stack signal',h:resTop?resTop[0]:'Resource stack',p:resTop?`${pct(resTop[1],peers.length)}% mention it; inspect usage, not popularity.`:'Copy the resource workflow, not the product list.',kind:'resource',c:'var(--amber)',l:'var(--amber-l)'},
+  return [
+    `Take one timed <b>${esc(secName)}</b> set and tag every miss: concept, timing, or careless.`,
+    genTop?`Set up your review loop — <b>${esc(genTop[0])}</b> shows up in ${pct(genTop[1],peers.length)}% of stories like yours.`:'Set up a weekly loop: timed set → review misses → drill the repeat offender.',
+    resTop?`Pick one core resource and commit for two weeks — <b>${esc(resTop[0])}</b> is the most-named here (${pct(resTop[1],peers.length)}%).`:'Pick one core resource and commit to it for two weeks.',
+    'Book a full-length mock for the end of the week — real timing data beats guessing.',
   ];
-  el.innerHTML=cards.map(x=>`<div class="signalcard" style="--sc:${x.c};--scl:${x.l}">
-    <div class="k">${x.k}</div><h3>${esc(x.h)}</h3><p>${esc(x.p)}</p>
-    <button type="button" onclick="handlePlanAction('${x.kind}')">Open insight
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-  </div>`).join('');
+}
+function renderChecklist(peers){
+  const el=document.getElementById('planChecklist');if(!el)return;
+  if(!peers)peers=peersFor(plan.tgt,plan.cur).peers;
+  const items=checklistItems(peers),done=loadChecks();
+  const n=items.reduce((a,_,i)=>a+(done[i]?1:0),0);
+  const ct=document.getElementById('chkCount');
+  if(ct)ct.textContent=n+' of '+items.length+' done';
+  el.innerHTML=items.map((t,i)=>`<button type="button" class="chk ${done[i]?'done':''}" onclick="toggleCheck(${i})" aria-pressed="${!!done[i]}">
+    <span class="box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span>
+    <span class="txt">${t}</span></button>`).join('');
+}
+function toggleCheck(i){
+  const done=loadChecks();done[i]=!done[i];saveChecks(done);renderChecklist();
+  track('check_toggle',{i,on:!!done[i]});
+  if(done[i]&&[0,1,2,3].every(k=>done[k]))confettiBurst(document.querySelector('.checkwrap'));
+}
+
+/* ---- playful bits: count-up numbers + confetti ---- */
+function animateCounts(root){
+  if(!root)return;
+  root.querySelectorAll('[data-cnt]').forEach(el=>{
+    const end=parseFloat(el.getAttribute('data-cnt'));
+    if(RM||!isFinite(end))return;
+    const t0=performance.now(),dur=750,dec=String(end).includes('.')?1:0;
+    const step=t=>{const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+      el.textContent=(end*e).toFixed(dec);
+      if(p<1)requestAnimationFrame(step);else el.textContent=String(end);};
+    requestAnimationFrame(step);
+  });
+}
+function confettiBurst(host){
+  if(RM||!host)return;
+  const colors=['#5b5bd6','#7c5cf0','#ff6b5b','#15a34a','#e08a00','#0d9488','#ffffff'];
+  const w=document.createElement('div');w.className='confetti';
+  let bits='';
+  for(let i=0;i<26;i++){
+    const a=Math.random()*Math.PI*2,r=90+Math.random()*150;
+    bits+=`<i style="background:${colors[i%colors.length]};--cx:${Math.round(Math.cos(a)*r)}px;--cy:${Math.round(Math.sin(a)*r-40)}px;--cr:${Math.round(Math.random()*540-270)}deg;--cd:${Math.round(Math.random()*140)}ms"></i>`;
+  }
+  w.innerHTML=bits;host.appendChild(w);setTimeout(()=>w.remove(),1500);
 }
 function renderPlanActions(peers,b){
   const focus=focusOf(plan.focus),weak=weakestSection(peers),secKey=selectedSectionKey(peers),secName=sectionLabel(secKey);
@@ -1456,20 +1686,20 @@ function renderPlanActions(peers,b){
       h:`Start with ${secName}`,
       p:sectionCopy,
       m:secTop?`<b>${pct(secTop[1],peers.length)}%</b> mention ${esc(secTop[0])}`:`<b>${peers.length}</b> examples`,
-      a:'Open section insight',kind:'section'},
+      a:'See the evidence',kind:'section'},
     {k:'Practice loop',c:'var(--primary)',l:'var(--primary-l)',
       h:genTop[0]?esc(genTop[0][0]):'Build a review loop',
       p:'The repeated pattern is not just doing more questions. People describe a loop of mocks, review, targeted drills, and test-day execution.',
       m:genTop[0]?`<b>${pct(genTop[0][1],peers.length)}%</b> name this habit`:`<b>${peers.length}</b> debriefs sampled`,
-      a:'Open practice insight',kind:'habit'},
+      a:'See the evidence',kind:'habit'},
     {k:'Resource stack',c:'var(--amber)',l:'var(--amber-l)',
       h:resTop[0]?esc(resTop[0][0]):'Use named materials deliberately',
       p:'Resources are popularity signals, not proof of causality. The useful move is seeing how students combined official material, practice banks, and review.',
       m:resTop[0]?`<b>${pct(resTop[0][1],peers.length)}%</b> mention the top resource`:`<b>0</b> named resources`,
-      a:'Open resource insight',kind:'resource'},
+      a:'See the evidence',kind:'resource'},
   ];
   document.getElementById('planActions').innerHTML=cards.map(x=>`
-    <div class="actioncard" style="--ac:${x.c};--acl:${x.l}">
+    <div class="actioncard rise" style="--ac:${x.c};--acl:${x.l}">
       <span class="k">${x.k}</span>
       <h3>${x.h}</h3>
       <p>${x.p}</p>
@@ -1518,9 +1748,10 @@ function svgVBars(data,opt){
   const n=data.length,slot=plotW/n,bw=Math.min(cmp?30:56,slot*.62);
   const bars=data.map((d,i)=>{
     const v=d.value||0,y=sc(v),h=Math.max(0,base-y),x=padL+i*slot+(slot-bw)/2;
+    const hit=d.click?`<rect x="${(padL+i*slot).toFixed(1)}" y="${padT}" width="${slot.toFixed(1)}" height="${(base-padT).toFixed(1)}" fill="transparent" style="cursor:pointer" onclick="${d.click}"><title>${esc(d.label)}: ${esc(String(d.tip!=null?d.tip:v))} — tap for the stories</title></rect>`:'';
     return `<rect class="vbar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="6" fill="${d.color||opt.color||'var(--primary)'}"><title>${esc(d.label)}: ${esc(String(d.tip!=null?d.tip:v))}</title></rect>
       ${(d.valLabel!==''&&(v||d.valLabel!=null))?`<text class="vcount" x="${(x+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle">${d.valLabel!=null?d.valLabel:v}</text>`:''}
-      <text class="axlabel" x="${(x+bw/2).toFixed(1)}" y="${H-13}" text-anchor="middle">${esc(d.label)}</text>`;
+      <text class="axlabel" x="${(x+bw/2).toFixed(1)}" y="${H-13}" text-anchor="middle">${esc(d.label)}</text>${hit}`;
   }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(opt.aria||'bar chart')}">${grid}<line class="axis" x1="${padL}" x2="${W-padR}" y1="${base}" y2="${base}"/>${bars}</svg>`;
 }
@@ -1583,14 +1814,17 @@ function svgHist(rows,opt){
 }
 function hBarsHTML(data,total,opt){
   opt=opt||{};const mx=data.length?data[0][1]:1;
-  return '<div class="bars">'+data.map(([label,n])=>{const p=Math.round(100*n/(total||1));
-    return `<div class="barrow"><div class="blabel"><span class="bname"><span class="txt">${esc(label)}</span></span><span class="bpct">${p}%</span></div>
-      <div class="bartrack"><div class="barfill" style="--w:${Math.round(100*n/mx)}%${opt.color?';background:'+opt.color:''}"></div></div></div>`;}).join('')+'</div>';
+  return '<div class="bars">'+data.map(([label,n],i)=>{const p=Math.round(100*n/(total||1));
+    const inner=`<div class="blabel"><span class="bname"><span class="txt">${esc(label)}</span></span><span class="bpct">${p}%</span></div>
+      <div class="bartrack"><div class="barfill" style="--w:${Math.round(100*n/mx)}%${opt.color?';background:'+opt.color:''}"></div></div>`;
+    return opt.click?`<button type="button" class="barrow barbtn" onclick="${opt.click}(${i})">${inner}</button>`
+      :`<div class="barrow">${inner}</div>`;}).join('')+'</div>';
 }
 
 /* ================= EXPLORE THE DATA (global, filterable charts) ================= */
 let xf={bands:new Set(),src:'',res:'',self:false};
-let xLimit=12;
+let xLimit=12,xq='',xsort='score';
+let _xrestop=[],_xatt=[];
 function xFiltered(ignoreBand){
   let rows=DEB.slice();
   if(!ignoreBand&&xf.bands.size)rows=rows.filter(d=>{const b=BANDS.find(x=>inBand(d,x));return b&&xf.bands.has(b.key);});
@@ -1641,37 +1875,108 @@ function renderXSection(rows){
   const groups=BANDS.map(b=>{const br=rows.filter(d=>inBand(d,b)),m=sectionMedians(br);return {label:b.label.replace(' – ','–'),values:{q:m.q,v:m.v,di:m.di}};});
   const allv=groups.flatMap(g=>Object.values(g.values)).filter(x=>x!=null);
   const box=document.getElementById('xsection'),leg=document.getElementById('xsectionLeg');
-  if(!allv.length){box.innerHTML='<div class="chartempty">No complete section splits in this selection.</div>';leg.innerHTML='';return;}
-  const series=[{key:'q',label:'Quant',color:'var(--blue)'},{key:'v',label:'Verbal',color:'var(--violet)'},{key:'di',label:'Data Insights',color:'var(--amber)'}];
+  if(!allv.length){box.innerHTML='<div class="chartempty">No complete section splits in this selection.</div>';leg.innerHTML='';setTake('xsectionTake','');return;}
+  const series=[{key:'q',label:'Quant',color:'var(--blue)'},{key:'v',label:'Verbal',color:'var(--violet)'},{key:'di',label:'Data Insights',color:'var(--teal)'}];
   const yMin=Math.max(60,Math.floor((Math.min(...allv)-4)/5)*5);
   paint('xsection',svgGroupedBars(groups,series,{yMin,yMax:90,aria:'Median section score by band'}));
   leg.innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join('');
+  const wq=weakestSection(rows);
+  setTake('xsectionTake',wq?`In this view, <b>${wq.name}</b> is the lowest typical section (<b>${wq.score}</b>) — the common bottleneck.`:'');
 }
+function setTake(id,html){const el=document.getElementById(id);if(!el)return;
+  el.classList.toggle('hidden',!html);
+  el.innerHTML=html?`<span class="tico">✦</span><span>${html}</span>`:'';}
 function renderXGain(rows){
   const gains=rows.map(d=>d.gain).filter(x=>x!=null),box=document.getElementById('xgain');
-  if(!gains.length){box.innerHTML='<div class="chartempty">Only some debriefs report a start score, so no point-gain data in this selection.</div>';return;}
-  const data=GAINB.map(g=>({label:g.label,value:gains.filter(v=>v>=g.lo&&v<=g.hi).length,color:'var(--coral)'}));
+  if(!gains.length){box.innerHTML='<div class="chartempty">Only some debriefs report a start score, so no point-gain data in this selection.</div>';setTake('xgainTake','');return;}
+  const data=GAINB.map((g,i)=>({label:g.label,value:gains.filter(v=>v>=g.lo&&v<=g.hi).length,color:'var(--coral)',click:`xOpenGain(${i})`}));
   paint('xgain',svgVBars(data,{aria:'Point gain distribution'}));
+  const mg=Math.round(median(gains)),big=pct(gains.filter(v=>v>=100).length,gains.length);
+  setTake('xgainTake',`Median gain <b>+${mg}</b> — and <b>${big}%</b> of reported jumps are 100+ points.`);
+}
+function xOpenGain(i){
+  const g=GAINB[i],rows=xFiltered().filter(d=>d.gain!=null&&d.gain>=g.lo&&d.gain<=g.hi);
+  track('x_bar_open',{kind:'gain',b:g.label});
+  openCohort(`Gained ${g.label} points`,`${rows.length} filtered debriefs reported a ${g.label}-point jump from their start score.`,bestExamples(rows,12),{kind:'gain',tactic:g.label+' pts',sample:rows.length});
 }
 function renderXRes(rows){
   const top=topResources(rows,isCompact()?7:10),box=document.getElementById('xres');
-  if(!top.length){box.innerHTML='<div class="chartempty">No named resources in this selection.</div>';return;}
-  paint('xres',hBarsHTML(top,rows.length,{color:'var(--amber)'}));
+  _xrestop=top;
+  if(!top.length){box.innerHTML='<div class="chartempty">No named resources in this selection.</div>';setTake('xresTake','');return;}
+  paint('xres',hBarsHTML(top,rows.length,{color:'var(--amber)',click:'xOpenRes'}));
+  setTake('xresTake',`<b>${esc(top[0][0])}</b> shows up in <b>${pct(top[0][1],rows.length)}%</b> of this view — popularity, not proof.`);
+}
+function xOpenRes(i){
+  const r=_xrestop[i];if(!r)return;
+  const rows=xFiltered().filter(d=>(d.resources||[]).includes(r[0]));
+  track('x_bar_open',{kind:'res',b:r[0]});
+  openCohort(`Used ${r[0]}`,`${rows.length} filtered debriefs name ${r[0]}. Popularity, not proof — read how they used it.`,bestExamples(rows,12),{kind:'resource',resource:r[0],sample:rows.length});
 }
 function renderXScatter(rows){
   const raw=rows.filter(d=>d.prep_weeks!=null&&d.gain!=null),box=document.getElementById('xscatter');
-  if(raw.length<3){box.innerHTML='<div class="chartempty">Not enough debriefs report both prep time and a start score in this selection.</div>';return;}
+  if(raw.length<3){box.innerHTML='<div class="chartempty">Not enough debriefs report both prep time and a start score in this selection.</div>';setTake('xscatterTake','');return;}
   const xMax=Math.min(Math.max(...raw.map(d=>d.prep_weeks)),52);
   const pts=raw.map(d=>{const b=BANDS.find(x=>inBand(d,x)),c=b?BANDC[b.key].c:'var(--primary)';
     return {x:Math.min(d.prep_weeks,xMax),y:d.gain,color:c,tip:`${d.prep_weeks}w → +${d.gain} (${d.total})`};});
   paint('xscatter',svgScatter(pts,{xMax,xTitle:'weeks of prep',aria:'Prep time vs score gain'}));
+  const n=pts.length,sX=pts.reduce((a,p)=>a+p.x,0),sY=pts.reduce((a,p)=>a+p.y,0),
+    sXY=pts.reduce((a,p)=>a+p.x*p.y,0),sXX=pts.reduce((a,p)=>a+p.x*p.x,0),den=n*sXX-sX*sX;
+  if(den){const m4=Math.round(((n*sXY-sX*sY)/den)*4);
+    setTake('xscatterTake',Math.abs(m4)<3?`The trend line is nearly flat here — extra weeks alone don't buy points; what you do with them does.`:`On trend, four extra prep weeks ≈ <b>${m4>0?'+':''}${m4} points</b> of gain here — correlation, not causation.`);}
+  else setTake('xscatterTake','');
 }
 function renderXPrep(rows){
   const data=PREPB.map(p=>{const br=rows.filter(d=>d.prep_weeks!=null&&d.prep_weeks>=p.lo&&d.prep_weeks<=p.hi),m=median(br.map(d=>d.total).filter(x=>x!=null));return {label:p.label,med:m!=null?Math.round(m):null,n:br.length};});
   const has=data.filter(d=>d.med!=null),box=document.getElementById('xprep');
-  if(has.length<2){box.innerHTML='<div class="chartempty">Not enough prep-time data in this selection.</div>';return;}
+  if(has.length<2){box.innerHTML='<div class="chartempty">Not enough prep-time data in this selection.</div>';setTake('xprepTake','');return;}
   const vals=has.map(d=>d.med),yMin=Math.max(600,Math.floor((Math.min(...vals)-15)/10)*10),yMax=Math.min(805,Math.ceil((Math.max(...vals)+15)/10)*10);
-  paint('xprep',svgVBars(data.map(d=>({label:d.label,value:d.med!=null?d.med:yMin,valLabel:d.med!=null?d.med:'',tip:d.med!=null?`median ${d.med} · n=${d.n}`:'no data',color:'var(--primary)'})),{yMin,yMax,aria:'Median score by prep time'}));
+  paint('xprep',svgVBars(data.map((d,i)=>({label:d.label,value:d.med!=null?d.med:yMin,valLabel:d.med!=null?d.med:'',tip:d.med!=null?`median ${d.med} · n=${d.n}`:'no data',color:'var(--primary)',click:d.n?`xOpenPrep(${i})`:null})),{yMin,yMax,aria:'Median score by prep time'}));
+  const best=has.slice().sort((a,b)=>b.med-a.med)[0];
+  setTake('xprepTake',`The <b>${esc(best.label)}</b> group posts the highest median (<b>${best.med}</b>, n=${best.n}) — small samples, so read gently.`);
+}
+function xOpenPrep(i){
+  const p=PREPB[i],rows=xFiltered().filter(d=>d.prep_weeks!=null&&d.prep_weeks>=p.lo&&d.prep_weeks<=p.hi);
+  track('x_bar_open',{kind:'prep',b:p.label});
+  openCohort(`Prepped for ${p.label}`,`${rows.length} filtered debriefs reported ${p.label} of prep.`,bestExamples(rows,12),{kind:'prep',tactic:p.label,sample:rows.length});
+}
+function renderXAttempts(rows){
+  const box=document.getElementById('xattempts');if(!box)return;
+  const withA=rows.filter(d=>d.attempts!=null);
+  const buckets=[{label:'1st try',f:d=>d.attempts===1},{label:'2nd try',f:d=>d.attempts===2},{label:'3rd+',f:d=>d.attempts>=3}];
+  _xatt=buckets.map(bk=>{const br=withA.filter(bk.f),m=median(br.map(d=>d.total).filter(x=>x!=null));
+    return{label:bk.label,med:m!=null?Math.round(m):null,n:br.length,rows:br};});
+  const has=_xatt.filter(d=>d.med!=null&&d.n>=2);
+  if(has.length<2){box.innerHTML='<div class="chartempty">Not enough attempt data in this selection.</div>';setTake('xattemptsTake','');return;}
+  const vals=has.map(d=>d.med),yMin=Math.max(600,Math.floor((Math.min(...vals)-15)/10)*10),yMax=Math.min(805,Math.ceil((Math.max(...vals)+15)/10)*10);
+  paint('xattempts',svgVBars(_xatt.map((d,i)=>({label:d.label,value:d.med!=null?d.med:yMin,valLabel:d.med!=null?d.med:'',tip:d.med!=null?`median ${d.med} · n=${d.n}`:'no data',color:'var(--green)',click:d.n?`xOpenAttempts(${i})`:null})),{yMin,yMax,aria:'Median score by attempt number'}));
+  const retak=withA.filter(d=>d.attempts>=2),rg=retak.map(d=>d.gain).filter(x=>x!=null);
+  setTake('xattemptsTake',`<b>${pct(retak.length,withA.length)}%</b> of these stories are retakes${rg.length?`, with a median retake gain of <b>+${Math.round(median(rg))}</b>`:''}.`);
+}
+function xOpenAttempts(i){
+  const a=_xatt[i];if(!a||!a.rows.length)return;
+  track('x_bar_open',{kind:'attempts',b:a.label});
+  openCohort(`${a.label} stories`,`${a.rows.length} filtered debriefs took the test ${a.label==='3rd+'?'three or more times':a.label==='2nd try'?'twice':'once'}.`,bestExamples(a.rows,12),{kind:'attempts',tactic:a.label,sample:a.rows.length});
+}
+function renderXCompare(rows){
+  const el=document.getElementById('xcompare');if(!el)return;
+  const selfR=rows.filter(d=>(d.tags||[]).includes('Self Study')),courseR=rows.filter(d=>!(d.tags||[]).includes('Self Study'));
+  const agg=r=>({n:r.length,score:median(r.map(d=>d.total).filter(x=>x!=null)),gain:median(r.map(d=>d.gain).filter(x=>x!=null)),prep:median(r.map(d=>d.prep_weeks).filter(x=>x!=null))});
+  const a=agg(selfR),c=agg(courseR);
+  if(a.n<3||c.n<3){el.innerHTML='<div class="chartempty" style="grid-column:1/-1">Not enough of both groups in this selection to compare.</div>';setTake('xcompareTake','');return;}
+  const col=(x,title,cc,cl,isSelf)=>`<button type="button" class="duelcol" onclick="xOpenSelf(${isSelf})">
+    <span class="dh" style="background:var(${cl});color:var(${cc})">${title} · ${x.n}</span>
+    <div class="duelrow" style="border-top:none">median score<span class="dn">${x.score!=null?Math.round(x.score):'—'}</span></div>
+    <div class="duelrow">median gain<span class="dn">${x.gain!=null?'+'+Math.round(x.gain):'—'}</span></div>
+    <div class="duelrow">median prep<span class="dn">${x.prep!=null?fmt(x.prep)+'w':'—'}</span></div>
+  </button>`;
+  el.innerHTML=col(a,'Self-study','--green-d','--green-l',true)+col(c,'Paid course','--amber','--amber-l',false);
+  const diff=(a.score!=null&&c.score!=null)?Math.round(a.score-c.score):null;
+  setTake('xcompareTake',diff==null?'':diff===0?'Identical median scores for both groups in this view.':`Self-study medians run <b>${Math.abs(diff)} point${Math.abs(diff)===1?'':'s'} ${diff>0?'higher':'lower'}</b> here — selection effects included, so not a verdict on courses.`);
+}
+function xOpenSelf(isSelf){
+  const rows=xFiltered().filter(d=>((d.tags||[]).includes('Self Study'))===!!isSelf);
+  track('x_bar_open',{kind:'self',b:isSelf?'self':'course'});
+  openCohort(isSelf?'Self-study stories':'Paid-course stories',`${rows.length} filtered debriefs ${isSelf?'used only free material':'mention paid prep'}.`,bestExamples(rows,12),{kind:'selfstudy',sample:rows.length});
 }
 function renderXHeat(){
   const base=xFiltered(true);
@@ -1685,10 +1990,19 @@ function renderXHeat(){
       cells.push(`<div class="hmcell" style="--a:${a.toFixed(2)}"><button type="button" onclick='openHeatCohort(${JSON.stringify(item.sec)},${JSON.stringify(item.label)},${JSON.stringify(b.key)})'>${p}%</button></div>`);});
   });
   document.getElementById('xheat').innerHTML=cells.join('');
+  if(cand.length){const top=cand[0],pool=rowsForStrat(base,top.sec,top.label);
+    setTake('xheatTake',`Darker = more common. <b>${esc(top.label)}</b> is the most-adopted tactic overall (<b>${pct(pool.length,base.length)}%</b> of everyone in this view).`);}
+  else setTake('xheatTake','');
 }
 function renderXBrowse(rows){
-  const sorted=rows.slice().sort((a,b)=>(b.total||0)-(a.total||0)),shown=sorted.slice(0,xLimit);
-  document.getElementById('xbrowseSub').innerHTML=`Showing <b>${Math.min(xLimit,sorted.length)}</b> of <b>${sorted.length}</b>, highest score first.`;
+  let sorted=rows.slice();
+  if(xq){const q=xq.toLowerCase();sorted=sorted.filter(d=>(d.title||'').toLowerCase().includes(q)||(d.resources||[]).some(r=>r.toLowerCase().includes(q)));}
+  const cmps={score:(a,b)=>(b.total||0)-(a.total||0),new:(a,b)=>String(b.date||'').localeCompare(String(a.date||'')),
+    gain:(a,b)=>(b.gain||0)-(a.gain||0),detail:(a,b)=>richScore(b)-richScore(a)};
+  sorted.sort(cmps[xsort]||cmps.score);
+  const slabels={score:'highest score first',new:'newest first',gain:'biggest gain first',detail:'most detailed first'};
+  const shown=sorted.slice(0,xLimit);
+  document.getElementById('xbrowseSub').innerHTML=`Showing <b>${Math.min(xLimit,sorted.length)}</b> of <b>${sorted.length}</b>, ${slabels[xsort]||''}${xq?` · matching “${esc(xq)}”`:''}.`;
   document.getElementById('xbrowseList').innerHTML=shown.map(debCardHTML).join('');
   document.getElementById('xbrowseEmpty').classList.toggle('hidden',sorted.length>0);
   document.getElementById('xbrowseMore').classList.toggle('hidden',sorted.length<=xLimit);
@@ -1700,11 +2014,13 @@ function renderExplore(){
   renderXStat(rows);
   paint('xdist',svgHist(rows,{highlight:xf.bands.size?xf.bands:null}));
   const dh=document.getElementById('xdistHint');if(dh)dh.textContent=xf.bands.size?'selected bands highlighted':'';
-  renderXSection(rows);renderXGain(rows);renderXRes(rows);renderXScatter(rows);renderXPrep(rows);renderXHeat();renderXBrowse(rows);
+  const xtot=rows.map(d=>d.total).filter(x=>x!=null);
+  setTake('xdistTake',xtot.length?`Median <b>${median(xtot)}</b> in this view; <b>${pct(xtot.filter(v=>v>=705).length,xtot.length)}%</b> land at 705 or above.`:'');
+  renderXSection(rows);renderXGain(rows);renderXRes(rows);renderXScatter(rows);renderXPrep(rows);renderXAttempts(rows);renderXCompare(rows);renderXHeat();renderXBrowse(rows);
 }
 function debCardHTML(d){
   const top=(d.strat||[]).slice(0,3).map(s=>{const{sec,label}=parseStrat(s);
-    const cm={Q:'var(--blue)',V:'var(--violet)',DI:'var(--amber)',G:'var(--primary)'};
+    const cm={Q:'var(--blue)',V:'var(--violet)',DI:'var(--teal)',G:'var(--primary)'};
     return `<span class="minichip"><span class="d" style="background:${cm[sec]}"></span>${esc(label)}</span>`;}).join('');
   const flags=(d.tags||[]).map(t=>t==='Maybe Promo'?'<span class="tag promo">Maybe&nbsp;promo</span>':t==='Self Study'?'<span class="tag self">Self&nbsp;study</span>':'').join('');
   const meta=[];
@@ -1785,7 +2101,7 @@ function openHeatCohort(sec,label,bandKey){
 /* ---------- detail ---------- */
 function sectionCompare(d){
   const b=BANDS.find(x=>inBand(d,x))||bandOf(state.band),peers=debsIn(b);
-  const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--amber)'};
+  const cm={q:'var(--blue)',v:'var(--violet)',di:'var(--teal)'};
   const lo=55,hi=90,scale=v=>Math.max(2,Math.min(100,Math.round(100*(v-lo)/(hi-lo))));
   const secs=[['q','Quant'],['v','Verbal'],['di','Data Insights']];
   let anyTyp=false;
@@ -1821,8 +2137,8 @@ function timelineSVG(det){
 function openDebrief(id,push){
   const d=DEB.find(x=>x.id===id);if(!d)return;
   const det=DETAILS[id]||{};
-  const cm={Q:'var(--blue)',V:'var(--violet)',DI:'var(--amber)',G:'var(--primary)'};
-  const cml={Q:'var(--blue-l)',V:'var(--violet-l)',DI:'var(--amber-l)',G:'var(--primary-l)'};
+  const cm={Q:'var(--blue)',V:'var(--violet)',DI:'var(--teal)',G:'var(--primary)'};
+  const cml={Q:'var(--blue-l)',V:'var(--violet-l)',DI:'var(--teal-l)',G:'var(--primary-l)'};
   const meta=[];
   if(d.prep_weeks)meta.push(`<span class="m"><b>${d.prep_weeks}</b> weeks prep</span>`);
   if(d.attempts)meta.push(`<span class="m"><b>${d.attempts}</b> attempt${d.attempts>1?'s':''}</span>`);
@@ -1883,7 +2199,12 @@ function doClose(){
 /* ---------- views + routing ---------- */
 function initExplore(){
   if(exploreInit)return;exploreInit=true;
+  const q=document.getElementById('xq');let qt;
+  if(q)q.oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{xq=e.target.value.trim();xLimit=12;renderXBrowse(xFiltered());},160);};
+  const so=document.getElementById('xsort');
+  if(so)so.onchange=e=>{xsort=e.target.value;xLimit=12;renderXBrowse(xFiltered());track('x_sort',{by:xsort});};
   renderFilterBar();renderExplore();
+  observeGrow(document.getElementById('view-explore'));
 }
 function showView(v){
   document.getElementById('view-plan').classList.toggle('hidden',v!=='plan');
@@ -1925,9 +2246,12 @@ document.addEventListener('keydown',e=>{
 /* ---------- scroll-in animation ---------- */
 let io;
 function observeGrow(root){
-  if(RM){document.querySelectorAll('.bars,.dist,.seccompare').forEach(el=>el.classList.add('grown'));return;}
+  if(RM||!('IntersectionObserver' in window)){document.querySelectorAll('.bars,.dist,.seccompare,.rise').forEach(el=>el.classList.add('grown'));return;}
   if(!io)io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('grown');io.unobserve(en.target);}}),{threshold:.18});
-  (root||document).querySelectorAll('.bars,.dist,.seccompare').forEach(el=>{if(!el.classList.contains('grown'))io.observe(el);});
+  (root||document).querySelectorAll('.bars,.dist,.seccompare,.rise').forEach(el=>{if(!el.classList.contains('grown'))io.observe(el);});
+  /* safety net: never leave above-the-fold content invisible if IO lags */
+  setTimeout(()=>{(root||document).querySelectorAll('.rise:not(.grown)').forEach(el=>{
+    const r=el.getBoundingClientRect();if(r.top<innerHeight+40)el.classList.add('grown');});},1200);
 }
 
 /* ---------- init ---------- */
