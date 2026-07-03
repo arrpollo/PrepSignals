@@ -639,7 +639,7 @@ function renderChecklist(peers){
     <span class="txt">${t}</span></button>`).join('');
 }
 function toggleCheck(i){
-  if(!requireAuth('checklist','Create account to save checklist','Keep checklist progress synced across devices.'))return;
+  if(!requireAuth('checklist','Sync planner progress','Keep checklist progress synced across devices.'))return;
   const done=loadChecks();done[i]=!done[i];saveChecks(done);renderChecklist();
   try{cloudSaveChecks();}catch(e){}
   track('check_toggle',{i,on:!!done[i]});
@@ -1237,7 +1237,7 @@ function currentPath(){
 function parseRoute(){
   const raw=currentPath().split('/').filter(Boolean).map(decodeURIComponent);
   const segs=raw.map(s=>s.toLowerCase());
-  const r={view:'path',plan:null,band:null,debrief:null,meSub:null};
+  const r={view:'path',plan:null,band:null,debrief:null,meSub:null,accountSub:null};
   if(!segs.length)return r;
   if(segs[0]==='debrief'&&raw[1]){r.view='debrief';r.debrief=raw[1];return r;}
   if(segs[0]==='explore'){r.view='explore';if(segs[1])r.band=bandBySlug(segs[1]);return r;}
@@ -1246,6 +1246,7 @@ function parseRoute(){
   if(segs[0]==='privacy'){r.view='privacy';return r;}
   if(segs[0]==='auth'){r.view='auth';r.authSub=segs[1]||'';return r;}
   if(segs[0]==='admin'){r.view='admin';r.adminSub=(segs[1]==='funnels'?'events':segs[1])||'';return r;}
+  if(segs[0]==='account'){r.view='account';r.accountSub=(segs[1]==='security'?'security':'profile');return r;}
   if(segs[0]==='me'){r.view='me';if(segs[1]==='progress'||segs[1]==='saved')r.meSub=segs[1];return r;}
   if(segs[0]==='path'&&segs[1]&&segs[1].includes('-to-')){
     const i=segs[1].lastIndexOf('-to-');
@@ -1259,6 +1260,7 @@ function baseSig(r){
   if(r.view==='path')return 'path|'+(r.plan?[r.plan.cur,r.plan.tgt,r.plan.wk,r.plan.focus].join('-'):'intake');
   if(r.view==='explore')return 'explore|'+(r.band?r.band.key:'');
   if(r.view==='me')return 'me|'+(r.meSub||'');
+  if(r.view==='account')return 'account|'+(r.accountSub||'profile');
   if(r.view==='admin')return 'admin|'+(r.adminSub||'');
   return r.view;
 }
@@ -1270,7 +1272,8 @@ function routeTitle(r){
   if(r.view==='terms')return 'Terms of Service — PrepSignals';
   if(r.view==='privacy')return 'Privacy Policy — PrepSignals';
   if(r.view==='admin')return 'Admin — PrepSignals';
-  if(r.view==='me')return r.meSub==='progress'?'Progress log — PrepSignals':r.meSub==='saved'?'Saved debriefs — PrepSignals':'Workspace — PrepSignals';
+  if(r.view==='account')return r.accountSub==='security'?'Password & security — PrepSignals':'Profile — PrepSignals';
+  if(r.view==='me')return r.meSub==='progress'?'Review log — PrepSignals':r.meSub==='saved'?'Saved debriefs — PrepSignals':'Study Planner — PrepSignals';
   if(r.plan){const c=curBucketOf(r.plan.cur),b=bandOf(r.plan.tgt);
     if(c&&b)return c.label+' → '+b.label+' score path — PrepSignals';}
   return 'PrepSignals — your personal GMAT score plan';
@@ -1328,10 +1331,13 @@ function applyRoute(){
       showView('me');renderMe(r.meSub);
     }else if(r.view==='admin'){
       showView('admin');if(typeof renderAdmin==='function')renderAdmin(r.adminSub);
+    }else if(r.view==='account'){
+      showView('account');if(typeof renderAccount==='function')renderAccount(r.accountSub);
     }else if(r.view==='terms'||r.view==='privacy'){
       showView(r.view);
     }else if(r.view==='about'){
       showView('about');if(!_firstRoute)track('about_open',{});
+      if(typeof refreshAboutFeedback==='function')refreshAboutFeedback();
     }else{
       showView('path');
     }
@@ -1353,7 +1359,7 @@ function syncExploreURL(){ /* keep the URL honest as filters change: one band �
     _lastBasePath=want;
   }
 }
-const VIEWS=['path','explore','me','about','terms','privacy','admin'];
+const VIEWS=['path','explore','me','about','terms','privacy','admin','account'];
 function showView(v){
   currentView=v;
   VIEWS.forEach(k=>{
@@ -1407,7 +1413,7 @@ function loadSaved(){try{const a=JSON.parse(localStorage.getItem(LS_SAVED));
 function saveSaved(a){try{localStorage.setItem(LS_SAVED,JSON.stringify(a));}catch(e){}}
 function isSaved(id){return loadSaved().includes(id);}
 function toggleSave(id){
-  if(!requireAuth('save_debrief','Create account to save debriefs','Save this debrief to a synced reading list.',{saveId:id}))return;
+  if(!requireAuth('save_debrief','Save this debrief','Keep a synced reading queue for your planner.',{saveId:id}))return;
   let a=loadSaved();const was=a.includes(id);
   a=was?a.filter(x=>x!==id):[id].concat(a);
   saveSaved(a);
@@ -1415,7 +1421,7 @@ function toggleSave(id){
   const btn=document.getElementById('saveBtn-'+id);
   if(btn){btn.classList.toggle('on',!was);const sp=btn.querySelector('span');if(sp)sp.textContent=was?'Save':'Saved';}
   if(currentView==='me'&&currentMeSub==='saved')renderMe('saved');
-  toast(was?'Removed from your saved debriefs':(typeof cloudOK==='function'&&cloudOK()?'Saved to your account — find it in Workspace':'Saved — find it in Workspace'));
+  toast(was?'Removed from your saved debriefs':(typeof cloudOK==='function'&&cloudOK()?'Saved to your account — find it in Planner':'Saved — find it in Planner'));
   track('save_toggle',{id,on:!was});
 }
 function unsaveFromList(id){toggleSave(id);}
@@ -1423,14 +1429,17 @@ function loadProg(){try{const a=JSON.parse(localStorage.getItem(LS_PROG));
   return Array.isArray(a)?a.filter(x=>x&&x.total):[];}catch(e){return [];}}
 function saveProg(a){try{localStorage.setItem(LS_PROG,JSON.stringify(a));}catch(e){}}
 function addProgress(){
-  if(!requireAuth('progress','Create account to save scores','Log mocks and official scores across devices.'))return;
+  if(!requireAuth('progress','Save your review log','Log mocks, notes, and review tags across devices.'))return;
   const g=id=>document.getElementById(id);
   const total=parseInt(g('pgTotal').value,10);
   if(!(total>=205&&total<=805)){toast('Total score should be between 205 and 805');return;}
   const sec=k=>{const v=parseInt(g(k).value,10);return v>=60&&v<=90?v:null;};
+  const tags=[...document.querySelectorAll('input[name="pgTag"]:checked')].map(x=>x.value);
+  const notes=(g('pgNotes')&&g('pgNotes').value||'').trim();
   const e={date:g('pgDate').value||new Date().toISOString().slice(0,10),
     kind:g('pgKind').value==='official'?'official':'mock',
-    total,q:sec('pgQ'),v:sec('pgV'),di:sec('pgDI')};
+    total,q:sec('pgQ'),v:sec('pgV'),di:sec('pgDI'),
+    section_focus:g('pgFocus').value||'',review_tags:tags,notes};
   const a=loadProg();a.push(e);a.sort((x,y)=>String(x.date).localeCompare(String(y.date)));saveProg(a);
   try{cloudSaveProgress();}catch(e2){}
   track('progress_add',{kind:e.kind,total:e.total,n:a.length});
@@ -1444,6 +1453,112 @@ function fmtDate(s){
 }
 const ARROW_SM='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const CHECK_SM='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4.5 12.5l5 5L19.5 7"/></svg>';
+function plannerContext(){
+  const saved=loadSaved(),prog=loadProg(),has=planComplete();
+  const b=has?bandOf(plan.tgt):null,c=has?curBucketOf(plan.cur):null,wk=has?wkBucketOf(plan.wk):null,f=has?focusOf(plan.focus):null;
+  const peers=has?peersFor(plan.tgt,plan.cur).peers:[];
+  const checks=has?loadChecks():[],items=has?checklistItems(peers):[];
+  const nextIndex=items.findIndex((_,i)=>!checks[i]);
+  const last=prog.length?prog[prog.length-1]:null;
+  const weak=has?weakestSection(peers):null;
+  return{saved,prog,has,b,c,wk,f,peers,checks,items,nextIndex,last,weak};
+}
+function plannerProgressText(ctx){
+  if(!ctx.last)return 'No mock logged yet. Add your latest score so the planner can compare it with your target band.';
+  if(!ctx.has)return 'Latest logged score: '+ctx.last.total+'. Build a score path to turn this into a target-aware next step.';
+  const diff=ctx.b.lo-ctx.last.total;
+  if(diff>0)return 'Latest score '+ctx.last.total+' is '+diff+' points below '+ctx.b.label+'. Keep the next block narrow and review misses before adding new material.';
+  if(ctx.last.total>ctx.b.hi)return 'Latest score '+ctx.last.total+' is above '+ctx.b.label+'. Consider raising the target or tightening test-day execution.';
+  return 'Latest score '+ctx.last.total+' is inside '+ctx.b.label+'. Maintain the level and protect timing.';
+}
+function plannerTodayHTML(ctx){
+  const next=ctx.has&&ctx.nextIndex>=0?ctx.items[ctx.nextIndex]:'Build or reopen your score path so the planner can choose a real next step.';
+  const action=ctx.has?'<a href="'+planPath()+'" data-nav class="todaybtn">Open today\'s task '+ARROW_SM+'</a>':'<a href="/path" data-nav class="todaybtn">Build my path '+ARROW_SM+'</a>';
+  const done=ctx.has?ctx.checks.filter(Boolean).length:0;
+  return '<section class="todaycard rise">'+
+    '<div class="todaycopy"><span class="ey">Today</span><h2>'+(ctx.has?'Your next best step':'Start with a score path')+'</h2>'+
+    '<p>'+next+'</p><div class="todaymeta">'+
+    '<span>'+(ctx.has?esc(ctx.c.label)+' to '+esc(ctx.b.label):'4 quick answers')+'</span>'+
+    '<span>'+(ctx.has?done+' of '+ctx.items.length+' weekly tasks done':'No account needed to preview')+'</span>'+
+    '</div></div><div class="todayaction">'+action+'</div></section>';
+}
+function plannerAnswer(kind,ctx){
+  if(!ctx.has&&kind!=='read')return 'Build your score path first. The planner needs your current score, target, timeline, and bottleneck before it can make a useful recommendation.';
+  if(kind==='review'){
+    if(ctx.last&&ctx.last.notes)return 'Review your last note: "'+ctx.last.notes+'". Then tag the misses by section and mistake type before doing another timed set.';
+    return ctx.has?'Review the next unfinished checklist item and save one matching debrief before your next mock.':'Read a target-band debrief, then build a path so review advice can become specific.';
+  }
+  if(kind==='track'){
+    return plannerProgressText(ctx);
+  }
+  if(kind==='read'){
+    const pool=ctx.has?ctx.peers:debsIn(BANDS[1]);
+    const saved=ctx.saved;
+    const pick=bestExamples(pool.filter(d=>saved.indexOf(d.id)<0),1)[0]||bestExamples(pool,1)[0];
+    return pick?'Read "'+pick.title+'" because it is a high-signal debrief near '+(ctx.has?ctx.b.label:'the 705-745 band')+'.':'Open Explore and save one debrief worth revisiting.';
+  }
+  const sec=ctx.f&&ctx.f.key!=='unsure'?ctx.f.label:(ctx.weak?ctx.weak.name:'your weakest section');
+  if(ctx.nextIndex>=0)return 'Do this next: '+ctx.items[ctx.nextIndex].replace(/<[^>]*>/g,'')+' Keep it timed, then log what went wrong.';
+  return 'Your first-week checklist is complete. Log the next mock, then use the progress insight to choose the next section block. Start with '+sec+'.';
+}
+function plannerPromptMeta(kind,ctx){
+  const map={
+    today:['What should I do today?','Your next move',ctx.has?planPath():'/path',ctx.has?'Open today\'s task':'Build my path'],
+    review:['What should I review?','Review focus',ctx.has?(ctx.saved.length?'/me/saved':planPath()):'/path',ctx.saved.length?'Open saved debriefs':(ctx.has?'Open checklist':'Build my path')],
+    track:['Am I on track?','Progress check','/me/progress',ctx.last?'Open review log':'Log a score'],
+    read:['What should I read next?','Reading cue',ctx.saved.length?'/me/saved':'/explore',ctx.saved.length?'Open reading queue':'Find debriefs']
+  };
+  return map[kind]||map.today;
+}
+function plannerAnswerHTML(kind,ctx){
+  const m=plannerPromptMeta(kind,ctx);
+  return '<div class="botanswerTop"><span>'+esc(m[1])+'</span><b>'+esc(m[0])+'</b></div>'+
+    '<p>'+esc(plannerAnswer(kind,ctx))+'</p>'+
+    '<a href="'+m[2]+'" data-nav class="botanswerCta" onclick="track(\'planner_task_click\',{kind:\'assistant_'+kind+'\'})">'+esc(m[3])+' '+ARROW_SM+'</a>';
+}
+function plannerAssistantHTML(ctx){
+  const prompts=[['today','What should I do today?'],['review','What should I review?'],['track','Am I on track?'],['read','What should I read next?']];
+  return '<section class="plannerbot rise"><div class="bothead"><span class="botmark">PS</span><div><h2>Planner assistant</h2>'+
+    '<p>Rule-based guidance from your path, progress, checklist, saves, and the debrief dataset.</p></div></div>'+
+    '<div class="botchips" role="group" aria-label="Planner prompts">'+prompts.map(p=>'<button type="button" data-prompt="'+p[0]+'" class="'+(p[0]==='today'?'on':'')+'" aria-pressed="'+(p[0]==='today'?'true':'false')+'" onclick="plannerPrompt(\''+p[0]+'\')">'+p[1]+'</button>').join('')+'</div>'+
+    '<div class="botanswer" id="plannerAnswer" aria-live="polite">'+plannerAnswerHTML('today',ctx)+'</div></section>';
+}
+function plannerPrompt(kind){
+  const ctx=plannerContext(),el=document.getElementById('plannerAnswer');
+  document.querySelectorAll('.botchips button').forEach(b=>{
+    const on=b.dataset.prompt===kind;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-pressed',on?'true':'false');
+  });
+  if(el){
+    el.innerHTML=plannerAnswerHTML(kind,ctx);
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+  track('planner_prompt_click',{kind:kind,has_plan:ctx.has});
+}
+function plannerNudgeCardsHTML(ctx){
+  const planCard=ctx.has
+    ?`<a class="mecard rise" href="${planPath()}" data-nav style="--mc:var(--primary);--mcl:var(--primary-l)" onclick="track('planner_task_click',{kind:'plan'})">
+        <span class="k">Score path</span><h3>${esc(ctx.c.label)} to ${esc(ctx.b.label)}</h3>
+        <p>${esc(ctx.f.label)} focus. Reopen the evidence behind your path and keep the next block narrow.</p><span class="foot">Open path ${ARROW_SM}</span></a>`
+    :`<a class="mecard rise" href="/path" data-nav style="--mc:var(--primary);--mcl:var(--primary-l)" onclick="track('planner_task_click',{kind:'build_plan'})">
+        <span class="k">Score path</span><h3>No path yet</h3><p>Four quick taps turn the debrief dataset into a starting plan.</p><span class="foot">Build my path ${ARROW_SM}</span></a>`;
+  const checkCard=ctx.has
+    ?`<a class="mecard rise" href="${planPath()}" data-nav style="--mc:var(--green);--mcl:var(--green-l)" onclick="track('planner_task_click',{kind:'checklist'})">
+        <span class="k">Next task</span><h3>${ctx.nextIndex>=0?'Task '+(ctx.nextIndex+1):'Week complete'}</h3>
+        <p>${ctx.nextIndex>=0?ctx.items[ctx.nextIndex]:'Log your next mock and refresh the plan from real progress.'}</p><span class="foot">Open checklist ${ARROW_SM}</span></a>`
+    :`<a class="mecard rise" href="/path" data-nav style="--mc:var(--green);--mcl:var(--green-l)"><span class="k">First week</span><h3>Unlocks with your path</h3><p>The planner creates four first-week tasks once your path exists.</p><span class="foot">Start ${ARROW_SM}</span></a>`;
+  const progCard=`<a class="mecard rise" href="/me/progress" data-nav style="--mc:var(--coral);--mcl:var(--coral-l)" onclick="track('planner_task_click',{kind:'progress'})">
+        <span class="k">Progress</span><h3>${ctx.last?ctx.last.total+' · '+fmtDate(ctx.last.date):'No scores logged'}</h3>
+        <p>${esc(plannerProgressText(ctx))}</p><span class="foot">${ctx.last?'Open review log':'Log a score'} ${ARROW_SM}</span></a>`;
+  const savedCard=`<a class="mecard rise" href="${ctx.saved.length?'/me/saved':'/explore'}" data-nav style="--mc:var(--amber);--mcl:var(--amber-l)" onclick="track('planner_task_click',{kind:'saved'})">
+        <span class="k">Reading queue</span><h3>${ctx.saved.length?ctx.saved.length+' saved':'No saves yet'}</h3>
+        <p>${ctx.saved.length?'Use these debriefs as examples before your next review block.':'Save debriefs that match your path so the planner has a reading queue.'}</p>
+        <span class="foot">${ctx.saved.length?'Open saved':'Find stories'} ${ARROW_SM}</span></a>`;
+  return '<div class="megrid plangrid">'+planCard+checkCard+progCard+savedCard+'</div>';
+}
 function renderMe(sub){
   currentMeSub=sub||null;
   const el=document.getElementById('meBody');if(!el)return;
@@ -1453,49 +1568,15 @@ function renderMe(sub){
   observeGrow(el);
 }
 function meHomeHTML(){
-  const saved=loadSaved(),prog=loadProg(),has=planComplete();
-  const b=has?bandOf(plan.tgt):null,c=has?curBucketOf(plan.cur):null,wk=has?wkBucketOf(plan.wk):null,f=has?focusOf(plan.focus):null;
-  const done=has?loadChecks().filter(Boolean).length:0;
-  const last=prog.length?prog[prog.length-1]:null;
-  const planCard=has
-    ?`<a class="mecard rise" href="${planPath()}" data-nav style="--mc:var(--primary);--mcl:var(--primary-l)">
-        <span class="k">Score path</span>
-        <h3>${esc(c.label)} → ${esc(b.label)}</h3>
-        <p>${esc(f.label)} focus · ${esc(wk.label.toLowerCase())} until test day. Your plan has its own link — bookmark or share it.</p>
-        <span class="foot">Open my plan ${ARROW_SM}</span></a>`
-    :`<a class="mecard rise" href="/path" data-nav style="--mc:var(--primary);--mcl:var(--primary-l)">
-        <span class="k">Score path</span>
-        <h3>No score path yet</h3>
-        <p>Four quick taps and we match you with real stories from people who made your exact jump.</p>
-        <span class="foot">Build my plan ${ARROW_SM}</span></a>`;
-  const checkCard=has
-    ?`<a class="mecard rise" href="${planPath()}" data-nav style="--mc:var(--green);--mcl:var(--green-l)">
-        <span class="k">First week</span>
-        <h3>${done} of 4 done</h3>
-        <p>Your week-one checklist, built from what worked for people on your path. Progress stays synced.</p>
-        <span class="foot">Open the checklist ${ARROW_SM}</span></a>`
-    :`<a class="mecard rise" href="/path" data-nav style="--mc:var(--green);--mcl:var(--green-l)">
-        <span class="k">First week</span>
-        <h3>Unlocks with your plan</h3>
-        <p>Build your score path first — a four-task first week comes with it.</p>
-        <span class="foot">Start ${ARROW_SM}</span></a>`;
-  const savedCard=`<a class="mecard rise" href="${saved.length?'/me/saved':'/explore'}" data-nav style="--mc:var(--amber);--mcl:var(--amber-l)">
-        <span class="k">Saved debriefs</span>
-        <h3>${saved.length?saved.length+' saved':'Nothing saved yet'}</h3>
-        <p>${saved.length?'Your reading list of debriefs worth revisiting.':'Tap Save on any debrief to build a reading list for later.'}</p>
-        <span class="foot">${saved.length?'Open saved':'Find stories'} ${ARROW_SM}</span></a>`;
-  const progCard=`<a class="mecard rise" href="/me/progress" data-nav style="--mc:var(--coral);--mcl:var(--coral-l)">
-        <span class="k">Progress log</span>
-        <h3>${last?last.total+' · '+fmtDate(last.date):'No scores logged'}</h3>
-        <p>${prog.length?prog.length+(prog.length===1?' entry':' entries')+' — log every mock to see your trend.':'Log your mocks and official scores to watch the line move.'}</p>
-        <span class="foot">${prog.length?'Open the log':'Log a score'} ${ARROW_SM}</span></a>`;
+  const ctx=plannerContext();
   const avatar=(typeof isLoggedIn==='function'&&isLoggedIn()&&typeof accountInitial==='function')?`<span class="meavatar" aria-hidden="true">${esc(accountInitial())}</span>`:'';
-  return `<section class="mehead"><div class="mehero">${avatar}<div><h1>Workspace</h1>
+  return `<section class="mehead plannerhead"><div class="mehero">${avatar}<div><h1>Study Planner</h1>
       <p>${meHeadSub()}</p></div></div></section>
     ${mePrepStageHTML()}
-    <div class="megrid">${planCard}${checkCard}${savedCard}${progCard}</div>
+    ${plannerTodayHTML(ctx)}
+    ${plannerAssistantHTML(ctx)}
+    ${plannerNudgeCardsHTML(ctx)}
     ${meRecsHTML()}
-    ${meAccountHTML()}
     <div style="height:46px"></div>`;
 }
 function meSavedHTML(){
@@ -1509,7 +1590,7 @@ function meSavedHTML(){
     return `<div class="savedcell rise">${debCardHTML(d)}
       <button class="unsave" onclick="unsaveFromList('${id}')" aria-label="Remove from saved">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;}).join('');
-  return `<a class="mecrumb" href="/me" data-nav>← Workspace</a>
+  return `<a class="mecrumb" href="/me" data-nav>← Study Planner</a>
     <section class="mehead" style="padding-top:18px"><h1>Saved debriefs</h1>
       <p>Debriefs you bookmarked to revisit${(typeof cloudOK==='function'&&cloudOK())?' — synced to your account':''}.</p></section>
     ${planRow}
@@ -1523,10 +1604,12 @@ function meProgressHTML(){
   const a=loadProg();
   const entries=a.map((e,i)=>({e,i})).reverse().map(({e,i})=>{
     const secs=[['q','Q'],['v','V'],['di','DI']].map(([k,lab])=>e[k]?`<b>${e[k]}</b> ${lab}`:'').filter(Boolean).join(' · ');
+    const tags=Array.isArray(e.review_tags)?e.review_tags:[];
+    const review=[e.section_focus?`<b>${esc(e.section_focus)}</b>`:'',tags.length?tags.map(esc).join(' · '):'',e.notes?esc(e.notes):''].filter(Boolean).join(' — ');
     return `<div class="pentry">
       <span class="pscore">${e.total}</span>
       <span class="pkind ${e.kind==='official'?'official':'mock'}">${e.kind==='official'?'Official':'Mock'}</span>
-      <span class="pmeta">${fmtDate(e.date)}${secs?' · '+secs:''}</span>
+      <span class="pmeta">${fmtDate(e.date)}${secs?' · '+secs:''}${review?'<br><small>'+review+'</small>':''}</span>
       <button class="pdel" onclick="delProgress(${i})" aria-label="Delete entry">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M9 7V5h6v2M8 7l1 13h6l1-13"/></svg></button>
     </div>`;}).join('');
@@ -1538,12 +1621,12 @@ function meProgressHTML(){
       :lastT>b.hi?`Latest score <b>${lastT}</b> — above your ${esc(b.label)} target band. Time to raise the target?`
       :`Latest score <b>${lastT}</b> — inside your ${esc(b.label)} target band. Hold your level.`}</span></div>`;
   }
-  return `<a class="mecrumb" href="/me" data-nav>← Workspace</a>
-    <section class="mehead" style="padding-top:18px"><h1>Progress log</h1>
+  return `<a class="mecrumb" href="/me" data-nav>← Study Planner</a>
+    <section class="mehead" style="padding-top:18px"><h1>Review log</h1>
       <p>Log every mock and official score. The trend matters more than any single number.</p></section>
     <div class="panel" style="margin-top:16px">
       <h3>Log a score</h3>
-      <p class="psub">Total is required; section splits are optional.</p>
+      <p class="psub">Total is required; section splits, review focus, and notes are optional.</p>
       <div class="pform">
         <label class="pfield">Date<input type="date" id="pgDate"></label>
         <label class="pfield">Type<select id="pgKind"><option value="mock">Mock</option><option value="official">Official</option></select></label>
@@ -1551,13 +1634,21 @@ function meProgressHTML(){
         <label class="pfield">Q<input type="number" id="pgQ" min="60" max="90" placeholder="—" inputmode="numeric"></label>
         <label class="pfield">V<input type="number" id="pgV" min="60" max="90" placeholder="—" inputmode="numeric"></label>
         <label class="pfield">DI<input type="number" id="pgDI" min="60" max="90" placeholder="—" inputmode="numeric"></label>
+        <label class="pfield span2">Review focus<select id="pgFocus"><option value="">—</option><option>Quant</option><option>Verbal</option><option>Data Insights</option><option>Timing / test day</option></select></label>
+        <div class="pfield span4"><span>Mistake tags</span><div class="tagchecks">
+          <label><input type="checkbox" name="pgTag" value="Concept">Concept</label>
+          <label><input type="checkbox" name="pgTag" value="Timing">Timing</label>
+          <label><input type="checkbox" name="pgTag" value="Careless">Careless</label>
+          <label><input type="checkbox" name="pgTag" value="Stamina">Stamina</label>
+        </div></div>
+        <label class="pfield span6">Review note<textarea id="pgNotes" maxlength="600" placeholder="What caused the misses? What changes next?"></textarea></label>
       </div>
       <button class="paddbtn" style="margin-top:12px;width:100%" onclick="addProgress()">Add to my log</button>
       ${target}
     </div>
     ${a.length>=2?progressChartHTML(a):''}
     ${a.length?`<div class="panel" style="margin-top:16px"><h3>${a.length} ${a.length===1?'entry':'entries'}</h3>
-      <p class="psub">Newest first. Entries save in this browser.</p>
+      <p class="psub">Newest first. Entries include optional review tags and notes.</p>
       <div class="pentries">${entries}</div></div>`
       :`<div class="panel meempty" style="margin-top:16px"><div class="big">📈</div>
         No entries yet. Log your latest mock above — two entries draw your trend line.</div>`}
@@ -1621,8 +1712,8 @@ function observeGrow(root){
 })();
 
 'use strict';
-/* ================= v.20.2 AUTH — Supabase accounts, sync, save-gating =================
-   Concatenated after app.js by build_v202.py. Everything here uses `var` +
+/* ================= v.21 AUTH — Supabase accounts, sync, save-gating =================
+   Concatenated after app.js by build_v21.py. Everything here uses `var` +
    function declarations on purpose: app.js boots (applyRoute) before this
    section's top-level statements run, so TDZ-free globals keep the first
    render safe. All UI re-renders once auth state resolves. */
@@ -1696,6 +1787,8 @@ function refreshAuthUI(){
   try{
     if(currentView==='me')renderMe(currentMeSub);
     else if(currentView==='admin'&&typeof renderAdmin==='function')renderAdmin(currentAdminSub);
+    else if(currentView==='account'&&typeof renderAccount==='function')renderAccount(parseRoute().accountSub||'profile');
+    else if(currentView==='about')refreshAboutFeedback();
     else if(currentView==='path')renderPlanView();
   }catch(e){}
 }
@@ -1772,7 +1865,10 @@ function cloudSaveDebrief(id,on){
 }
 function cloudSaveProgress(){
   if(!cloudOK())return;
-  var uid=authUser.id,rows=loadProg().map(function(e){return{user_id:uid,date:e.date,kind:e.kind,total:e.total,q:e.q,v:e.v,di:e.di};});
+  var uid=authUser.id,rows=loadProg().map(function(e){return{
+    user_id:uid,date:e.date,kind:e.kind,total:e.total,q:e.q,v:e.v,di:e.di,
+    section_focus:e.section_focus||null,review_tags:Array.isArray(e.review_tags)?e.review_tags:[],notes:e.notes||null
+  };});
   sbClient.from('progress_entries').delete().eq('user_id',uid).then(function(){
     if(rows.length)sbClient.from('progress_entries').insert(rows).then(function(){});
   });
@@ -1787,7 +1883,7 @@ async function syncAccount(){
       sbClient.from('plans').select('*').eq('user_id',uid).maybeSingle(),
       sbClient.from('checklists').select('*').eq('user_id',uid).maybeSingle(),
       sbClient.from('saved_debriefs').select('debrief_id').eq('user_id',uid),
-      sbClient.from('progress_entries').select('date,kind,total,q,v,di').eq('user_id',uid).order('date')
+      sbClient.from('progress_entries').select('date,kind,total,q,v,di,section_focus,review_tags,notes').eq('user_id',uid).order('date')
     ]);
     var cPlan=got[0].data,cChecks=got[1].data,cSaved=(got[2].data||[]).map(function(r){return r.debrief_id;}),cProg=got[3].data||[];
 
@@ -1811,11 +1907,13 @@ async function syncAccount(){
     var key=function(e){return [e.date,e.kind,e.total].join('|');};
     var cloudKeys=new Set(cProg.map(key));
     var newRows=loadProg().filter(function(e){return !cloudKeys.has(key(e));})
-      .map(function(e){return{user_id:uid,date:e.date,kind:e.kind,total:e.total,q:e.q,v:e.v,di:e.di};});
+      .map(function(e){return{user_id:uid,date:e.date,kind:e.kind,total:e.total,q:e.q,v:e.v,di:e.di,
+        section_focus:e.section_focus||null,review_tags:Array.isArray(e.review_tags)?e.review_tags:[],notes:e.notes||null};});
     if(newRows.length)await sbClient.from('progress_entries').insert(newRows);
     var localKeys=new Set(loadProg().map(key));
     var merged=loadProg().concat(cProg.filter(function(e){return !localKeys.has(key(e));}).map(function(e){
-      return{date:e.date,kind:e.kind,total:e.total,q:e.q,v:e.v,di:e.di};}));
+      return{date:e.date,kind:e.kind,total:e.total,q:e.q,v:e.v,di:e.di,
+        section_focus:e.section_focus||null,review_tags:Array.isArray(e.review_tags)?e.review_tags:[],notes:e.notes||null};}));
     merged.sort(function(x,y){return String(x.date).localeCompare(String(y.date));});
     saveProg(merged);
     track('account_synced',{saved:savedUnion.length,progress:merged.length});
@@ -1829,10 +1927,32 @@ function renderNavAuth(){
   if(!accountsOn()){el.innerHTML='';return;}
   if(isLoggedIn()){
     var n=authName(),init=accountInitial();
-    el.innerHTML='<a class="userchip'+(emailVerified()?'':' unverified')+'" href="/me" data-nav title="'+esc(n)+(emailVerified()?'':' — email not verified yet')+'" aria-label="Account">'+esc(init)+'</a>';
+    el.innerHTML='<span class="acctmenuwrap">'+
+      '<button type="button" id="accountMenuBtn" class="userchip'+(emailVerified()?'':' unverified')+'" title="'+esc(n)+(emailVerified()?'':' — email not verified yet')+'" aria-label="Open account menu" aria-haspopup="menu" aria-expanded="false" onclick="toggleAccountMenu()">'+esc(init)+'</button>'+
+      '<div class="acctmenu" id="accountMenu" role="menu" aria-label="Account menu">'+
+      '<div class="acctmenutop"><b>'+esc(n||'Account')+'</b><span>'+esc(authUser.email||'')+'</span></div>'+
+      '<a role="menuitem" href="/me" data-nav onclick="closeAccountMenu()">Study Planner</a>'+
+      '<a role="menuitem" href="/account/profile" data-nav onclick="closeAccountMenu()">Profile</a>'+
+      '<a role="menuitem" href="/account/security" data-nav onclick="closeAccountMenu()">Password &amp; security</a>'+
+      (isAdmin()?'<a role="menuitem" href="/admin" data-nav onclick="closeAccountMenu()">Admin dashboard</a>':'')+
+      '<button type="button" role="menuitem" onclick="closeAccountMenu();doLogout()">Sign out</button>'+
+      '</div></span>';
   }else{
     el.innerHTML='<button type="button" class="loginbtn" onclick="openAuth(\'login\',\'nav\')" aria-label="Log in or create account">Log in</button>';
   }
+}
+function toggleAccountMenu(){
+  var m=document.getElementById('accountMenu'),b=document.getElementById('accountMenuBtn');
+  if(!m||!b)return;
+  var on=!m.classList.contains('on');
+  m.classList.toggle('on',on);
+  b.setAttribute('aria-expanded',on?'true':'false');
+  if(on)track('account_menu_open',{admin:isAdmin()});
+}
+function closeAccountMenu(){
+  var m=document.getElementById('accountMenu'),b=document.getElementById('accountMenuBtn');
+  if(m)m.classList.remove('on');
+  if(b)b.setAttribute('aria-expanded','false');
 }
 function updateAdminNav(){
   var a=document.getElementById('nav-admin');if(a)a.classList.toggle('hidden',!isAdmin());
@@ -1863,6 +1983,7 @@ function onAuthDeepLink(sub){
 /* ---------- modal ---------- */
 function openAuth(mode,source,opts){
   if(!accountsOn()){toast('Accounts need a network connection');return;}
+  closeAccountMenu();
   _authSource=source||_authSource||'direct';
   var m=document.getElementById('authModal');if(!m)return;
   m.innerHTML=authCardHTML(mode,opts||{});
@@ -1970,7 +2091,7 @@ function authCardHTML(mode,opts){
   }
   if(mode==='login'){
     return '<div class="authcard">'+close+logo+
-      '<h3>Welcome back</h3><p class="asub">Log in to your PrepSignals workspace.</p>'+err+
+      '<h3>Welcome back</h3><p class="asub">Log in to your PrepSignals planner.</p>'+err+
       '<form onsubmit="doLogin(event)">'+
       '<label class="afield"><span class="alabel">Email <span class="req">required</span></span><input type="email" id="auEmail" autocomplete="email" placeholder="you@example.com" required aria-describedby="auEmailErr" oninvalid="authNativeInvalid(event)" oninput="authFieldInput(event)"><span class="aferr hidden" id="auEmailErr"></span></label>'+
       pwFieldHTML('Password','auPw','current-password','Your password')+
@@ -2116,7 +2237,7 @@ async function doLogout(){
   plan={cur:null,tgt:null,wk:null,focus:null};showIntakeForm=true;
   track('logout',{});
   toast('Signed out');
-  if(currentView==='me'||currentView==='admin')nav('/me');else refreshAuthUI();
+  if(currentView==='me'||currentView==='admin'||currentView==='account')nav('/me');else refreshAuthUI();
 }
 async function doDeleteAccount(){
   if(!sbClient||!authUser)return;
@@ -2138,17 +2259,17 @@ async function doDeleteAccount(){
 function planSyncCardHTML(){
   var CHECK='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4.5 12.5l5 5L19.5 7"/></svg>';
   if(!accountsOn())
-    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Saved on this device</b> — this path has a shareable link.</span><a href="/me" data-nav>Open workspace</a></div>';
+    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Saved on this device</b> — this path has a shareable link.</span><a href="/me" data-nav>Open planner</a></div>';
   if(isLoggedIn()&&emailVerified())
-    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Saved to your account</b> — this path syncs across devices.</span><a href="/me" data-nav>Open workspace</a></div>';
+    return '<div class="synccard rise"><span class="sico">'+CHECK+'</span><span class="grow"><b>Saved to your account</b> — this path syncs across devices.</span><a href="/me" data-nav>Open planner</a></div>';
   if(isLoggedIn())
     return '<div class="synccard rise warn"><span class="sico">!</span><span class="grow"><b>Verify your email to save this path.</b> The link is in your inbox.</span><button type="button" class="alink" onclick="openAuth(\'verify\',\'plan\')">Resend</button></div>';
-  return '<div class="synccard rise cta"><span class="sico">'+CHECK+'</span><span class="grow"><b>Save this path.</b> Create a free account to sync your plan, checklist, and progress.</span><button type="button" class="syncbtn" onclick="openAuth(\'signup\',\'plan\')">Create account</button></div>';
+  return '<div class="synccard rise cta"><span class="sico">'+CHECK+'</span><span class="grow"><b>Keep this path.</b> Sync your plan, checklist, and progress when you come back.</span><button type="button" class="syncbtn" onclick="openAuth(\'signup\',\'plan\')">Sync my planner</button></div>';
 }
 function checkNoteHTML(){
-  if(!accountsOn())return 'Checklist progress saves in this browser · <a href="/me" data-nav>open workspace</a>';
-  if(isLoggedIn()&&emailVerified())return 'Checklist progress syncs to your account · <a href="/me" data-nav>open workspace</a>';
-  return 'Create a free account to keep checklist progress · <button type="button" class="alink" onclick="openAuth(\'signup\',\'checklist\')">create account</button>';
+  if(!accountsOn())return 'Checklist progress saves in this browser · <a href="/me" data-nav>open planner</a>';
+  if(isLoggedIn()&&emailVerified())return 'Checklist progress syncs to your account · <a href="/me" data-nav>open planner</a>';
+  return 'Keep checklist progress for next time · <button type="button" class="alink" onclick="openAuth(\'signup\',\'checklist\')">sync planner</button>';
 }
 /* /me gate: returns HTML when the workspace is locked, null when app.js should render normally */
 function meAuthGateHTML(sub){
@@ -2160,22 +2281,22 @@ function meAuthGateHTML(sub){
 function meLockedHTML(){
   var hasLegacy=false;
   try{hasLegacy=!!(localStorage.getItem('ps_saved_v1')||localStorage.getItem('ps_progress_v1')||localStorage.getItem('ps_plan_v1'));}catch(e){}
-  return '<section class="mehead"><h1>Workspace</h1><p>Your plan, checklist, saved debriefs and progress in one place.</p></section>'+
+  return '<section class="mehead"><h1>Study Planner</h1><p>Your plan, checklist, saved debriefs and progress in one place.</p></section>'+
     '<div class="lockcard rise">'+
     '<div class="lockbadge">Free account</div>'+
-    '<h3>Save your prep workspace</h3>'+
+    '<h3>Sync your study planner</h3>'+
     '<p>Create a free account when you want your study data to follow you across devices.</p>'+
-    '<div class="lockpreview" aria-label="Workspace preview">'+
+    '<div class="lockpreview" aria-label="Study planner preview">'+
     '<div><span>Saved</span><b>Debriefs to revisit</b></div>'+
-    '<div><span>Checklist</span><b>Progress synced</b></div>'+
-    '<div><span>Score log</span><b>Mocks on one trend</b></div>'+
+    '<div><span>Checklist</span><b>Next task ready</b></div>'+
+    '<div><span>Review log</span><b>Mocks on one trend</b></div>'+
     '</div>'+
     '<ul class="locklist">'+
     '<li><b>Score path</b> — keep your plan and reopen it anywhere</li>'+
     '<li><b>Week-one checklist</b> — checklist progress that stays synced</li>'+
     '<li><b>Saved debriefs</b> — a reading list of stories worth revisiting</li>'+
-    '<li><b>Progress log</b> — every mock on one trend line</li>'+
-    '<li><b>Recommendations</b> — debriefs matched to your target and weak area</li>'+
+    '<li><b>Review log</b> — every mock and note on one trend line</li>'+
+    '<li><b>Planner assistant</b> — next steps from your path, saves, and progress</li>'+
     '</ul>'+
     (hasLegacy?'<p class="locknote">You already have data saved on this device from before — it moves into your account automatically when you sign up.</p>':'')+
     '<div class="lockbtns"><button type="button" class="abtn" onclick="openAuth(\'signup\',\'me\')">Create free account</button>'+
@@ -2185,10 +2306,10 @@ function meLockedHTML(){
 }
 function meVerifyHTML(){
   var em=(authUser&&authUser.email)||'';
-  return '<section class="mehead"><h1>Workspace</h1><p>One step left before your workspace unlocks.</p></section>'+
+  return '<section class="mehead"><h1>Study Planner</h1><p>One step left before your planner unlocks.</p></section>'+
     '<div class="lockcard rise">'+
     '<div class="lockbadge amber">Verify email</div>'+
-    '<h3>Confirm '+esc(em)+' to start syncing</h3>'+
+    '<h3>Confirm '+esc(em)+' to sync your planner</h3>'+
     '<p>Check your email, click the verification link, then return to PrepSignals. You can keep this tab open; your saves start syncing after verification.</p>'+
     '<div class="lockbtns"><button type="button" class="abtn" onclick="doResend(\''+esc(em)+'\')">Resend verification email</button>'+
     '<button type="button" class="alink" onclick="doLogout()">Sign out</button></div>'+
@@ -2215,10 +2336,35 @@ function mePrepStageHTML(){
     '<span class="stagechips">'+PREP_STAGES.map(function(s){
       return '<button type="button" class="stagechip" onclick="setPrepStage(\''+s[0]+'\')">'+s[1]+'</button>';}).join('')+'</span></div>';
 }
+function accountLockedHTML(){
+  return '<section class="mehead"><h1>Account</h1><p>Log in to manage your profile and password.</p></section>'+
+    '<div class="lockcard rise"><div class="lockbadge">Account</div><h3>Your planner stays private</h3>'+
+    '<p>Profile and password controls are available after you log in.</p>'+
+    '<div class="lockbtns"><button type="button" class="abtn" onclick="openAuth(\'login\',\'account\')">Log in</button>'+
+    '<button type="button" class="alink" onclick="openAuth(\'signup\',\'account\')">Create a free account</button></div></div><div style="height:46px"></div>';
+}
+function renderAccount(sub){
+  var el=document.getElementById('accountBody');if(!el)return;
+  sub=sub==='security'?'security':'profile';
+  if(!accountsOn()){
+    el.innerHTML='<section class="mehead"><h1>Account</h1><p>Accounts need a network connection.</p></section>'+
+      '<div class="acctcard rise"><h3>Account controls unavailable</h3><p>You can still use the local planner in this browser.</p></div><div style="height:46px"></div>';
+    return;
+  }
+  if(!isLoggedIn()){el.innerHTML=accountLockedHTML();return;}
+  el.innerHTML=sub==='security'?accountSecurityHTML():accountProfileHTML();
+  observeGrow(el);
+}
 function meAccountHTML(){
-  if(!accountsOn())
-    return '<div class="acctcard rise"><h3>Use PrepSignals without an account</h3><p>You’re offline or accounts are unreachable, so everything on this page lives in this browser for now.</p></div>';
-  if(!isLoggedIn())return '';
+  return '';
+}
+function accountTabsHTML(active){
+  return '<div class="accounttabs">'+
+    '<a href="/account/profile" data-nav class="'+(active==='profile'?'on':'')+'">Profile</a>'+
+    '<a href="/account/security" data-nav class="'+(active==='security'?'on':'')+'">Password &amp; security</a>'+
+    '</div>';
+}
+function accountProfileHTML(){
   var p=authProfile||{};
   var bandOpts=['<option value="">—</option>'].concat(BANDS.map(function(b){
     return '<option'+(p.target_score===b.label?' selected':'')+'>'+esc(b.label)+'</option>';})).join('');
@@ -2226,9 +2372,11 @@ function meAccountHTML(){
     return '<option'+(p.weak_area===w?' selected':'')+'>'+esc(w)+'</option>';})).join('');
   var stageOpts=['<option value="">—</option>'].concat(PREP_STAGES.map(function(s){
     return '<option value="'+s[0]+'"'+(p.prep_stage===s[0]?' selected':'')+'>'+s[1]+'</option>';})).join('');
-  return '<div class="panel acctpanel rise" id="acctPanel" style="margin-top:26px">'+
-    '<div class="accthead"><h3>Account</h3>'+
-    '<span class="verifybadge'+(emailVerified()?'':' off')+'">'+(emailVerified()?'✓ verified':'not verified')+'</span></div>'+
+  return '<section class="mehead"><h1>Profile</h1><p>Keep your planner inputs current so recommendations stay useful.</p></section>'+
+    accountTabsHTML('profile')+
+    '<div class="panel acctpanel rise" id="acctPanel" style="margin-top:16px">'+
+    '<div class="accthead"><h3>Profile details</h3>'+
+    '<span class="verifybadge'+(emailVerified()?'':' off')+'">'+(emailVerified()?'verified':'not verified')+'</span></div>'+
     '<p class="psub">Signed in as <b>'+esc(authUser.email)+'</b>'+(isAdmin()?' · <a href="/admin" data-nav>Admin dashboard</a>':'')+'</p>'+
     '<div class="pform acctform">'+
     '<label class="pfield">Name<input type="text" id="acName" maxlength="80" value="'+esc(p.name||(authUser.user_metadata||{}).name||'')+'"></label>'+
@@ -2240,10 +2388,82 @@ function meAccountHTML(){
     '<label class="acheck" style="margin-top:12px"><input type="checkbox" id="acMkt"'+(p.marketing_opt_in?' checked':'')+'><span>Send me prep offers, product updates, and study tips</span></label>'+
     '<p class="atrust">Optional. No prep offers unless you check this.</p>'+
     '<div class="acctbtns">'+
-    '<button type="button" class="paddbtn" onclick="saveAccountForm()">Save account settings</button>'+
-    '<button type="button" class="ghostbtn" onclick="doLogout()">Sign out</button>'+
+    '<button type="button" class="paddbtn" onclick="saveAccountForm()">Save profile</button>'+
+    '<a class="ghostbtn linkbtn" href="/me" data-nav>Back to planner</a>'+
     '<button type="button" class="dangerlink" onclick="doDeleteAccount()">Delete my account</button>'+
-    '</div></div>';
+    '</div></div><div style="height:46px"></div>';
+}
+function accountSecurityHTML(){
+  return '<section class="mehead"><h1>Password &amp; security</h1><p>Manage login details for <b>'+esc(authUser.email||'')+'</b>.</p></section>'+
+    accountTabsHTML('security')+
+    '<div class="panel acctpanel rise" style="margin-top:16px">'+
+    '<div class="accthead"><h3>Change password</h3><span class="verifybadge'+(emailVerified()?'':' off')+'">'+(emailVerified()?'verified':'not verified')+'</span></div>'+
+    '<p class="psub">Use at least 8 characters. If you forgot the current password, sign out and use the reset link from the login modal.</p>'+
+    '<div class="pform acctform securityform">'+
+    '<label class="pfield">New password<input type="password" id="secPw" autocomplete="new-password" minlength="8" placeholder="8+ characters"></label>'+
+    '<label class="pfield">Repeat password<input type="password" id="secPw2" autocomplete="new-password" minlength="8" placeholder="Same password again"></label>'+
+    '</div><div class="aerr hidden" id="secErr" style="margin-top:12px"></div>'+
+    '<div class="acctbtns"><button type="button" class="paddbtn" id="secSave" onclick="saveSecurityForm()">Update password</button>'+
+    '<button type="button" class="ghostbtn" onclick="doLogout()">Sign out</button></div>'+
+    '</div><div style="height:46px"></div>';
+}
+function securityErr(msg){
+  var e=document.getElementById('secErr');if(e){e.textContent=msg;e.classList.remove('hidden');}
+}
+async function saveSecurityForm(){
+  if(!sbClient||!authUser)return;
+  var pw=(document.getElementById('secPw')||{}).value||'',pw2=(document.getElementById('secPw2')||{}).value||'';
+  var err=document.getElementById('secErr');if(err){err.textContent='';err.classList.add('hidden');}
+  if(!pw)return securityErr('Password is required.');
+  if(pw.length<8)return securityErr('Password needs at least 8 characters.');
+  if(pw!==pw2)return securityErr('The two passwords do not match.');
+  var b=document.getElementById('secSave');if(b){b.disabled=true;b.classList.add('busy');}
+  try{
+    var res=await sbClient.auth.updateUser({password:pw});
+    if(b){b.disabled=false;b.classList.remove('busy');}
+    if(res.error)return securityErr(/session|logged/i.test(res.error.message)?'Log in again, then change your password.':res.error.message);
+    track('password_change_done',{});
+    toast('Password updated');
+    var p1=document.getElementById('secPw'),p2=document.getElementById('secPw2');if(p1)p1.value='';if(p2)p2.value='';
+  }catch(e){
+    if(b){b.disabled=false;b.classList.remove('busy');}
+    securityErr('Could not update password — try again.');
+  }
+}
+function refreshAboutFeedback(){
+  var email=document.getElementById('fbEmail');
+  if(email&&isLoggedIn()&&!email.value)email.value=authUser.email||'';
+}
+function feedbackMailto(email,title,body){
+  var subject=title||'PrepSignals feedback';
+  var mail='mailto:prepsignals@gmail.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent((body||'')+'\n\nFrom: '+(email||''));
+  window.location.href=mail;
+}
+async function submitFeedback(ev){
+  if(ev)ev.preventDefault();
+  var email=((document.getElementById('fbEmail')||{}).value||'').trim();
+  var title=((document.getElementById('fbTitle')||{}).value||'').trim();
+  var body=((document.getElementById('fbBody')||{}).value||'').trim();
+  if(!email||!title||!body){toast('Please fill in email, title, and message');return;}
+  var btn=document.getElementById('fbGo');if(btn){btn.disabled=true;btn.classList.add('busy');}
+  if(!accountsOn()){
+    if(btn){btn.disabled=false;btn.classList.remove('busy');}
+    track('feedback_submit',{logged_in:!!authUser,mode:'mailto'});
+    feedbackMailto(email,title,body);return;
+  }
+  try{
+    var row={user_id:(authUser&&authUser.id)||null,email:email,title:title,body:body};
+    var res=await sbClient.from('feedback_messages').insert(row);
+    if(btn){btn.disabled=false;btn.classList.remove('busy');}
+    if(res.error){track('feedback_submit',{logged_in:!!authUser,mode:'mailto'});feedbackMailto(email,title,body);return;}
+    track('feedback_submit',{logged_in:!!authUser,mode:'supabase'});
+    toast('Feedback sent — thank you');
+    var t=document.getElementById('fbTitle'),b=document.getElementById('fbBody');if(t)t.value='';if(b)b.value='';
+  }catch(e){
+    if(btn){btn.disabled=false;btn.classList.remove('busy');}
+    track('feedback_submit',{logged_in:!!authUser,mode:'mailto'});
+    feedbackMailto(email,title,body);
+  }
 }
 async function saveAccountForm(){
   var g=function(id){var el=document.getElementById(id);return el?el.value:'';};
@@ -2253,24 +2473,29 @@ async function saveAccountForm(){
   var ok=await saveProfilePatch(patch);
   track('profile_updated',{marketing_opt_in:!!mkt,has_target:!!patch.target_score,stage:patch.prep_stage||''});
   toast(ok?'Account settings saved':'Could not save — try again');
-  if(ok)refreshAuthUI();
+  if(ok){renderNavAuth();refreshAuthUI();}
 }
 function meHeadSub(){
-  if(cloudOK())return 'Signed in as '+esc(authUser.email)+'. Saves sync to your account.';
+  if(cloudOK())return 'Signed in as '+esc(authUser.email)+'. Your planner syncs across devices.';
   return 'Your plan, checklist, saved debriefs and progress — saved in this browser.';
 }
 
 /* Escape closes the auth modal first */
 document.addEventListener('keydown',function(e){
   if(e.key!=='Escape')return;
+  closeAccountMenu();
   var m=document.getElementById('authModal');
   if(m&&m.classList.contains('on')){e.stopImmediatePropagation();closeAuth();}
+},true);
+document.addEventListener('click',function(e){
+  var wrap=e.target&&e.target.closest&&e.target.closest('.acctmenuwrap');
+  if(!wrap)closeAccountMenu();
 },true);
 
 initAuthClient();
 
 'use strict';
-/* ================= v.20.2 ADMIN — /admin dashboard (role='admin' only) =================
+/* ================= v.21 ADMIN — /admin dashboard (role='admin' only) =================
    Client-side rendering, server-side protection: every query below runs through
    Supabase row-level security, so a non-admin session gets zero rows back no
    matter what URL they open. The route guard here is UX, not the security layer. */
@@ -2286,12 +2511,23 @@ function renderAdmin(sub){
     el.innerHTML='<section class="mehead"><h1>Admin</h1><p>This area is for the PrepSignals admin account.</p></section>'+
       '<div class="panel meempty" style="margin-top:18px"><div class="big">🔐</div>'+
       (isLoggedIn()?'Your account doesn’t have admin access.':'Log in with the admin account to continue.')+
-      '<br><br>'+(isLoggedIn()?'<a class="morebtn" href="/me" data-nav style="margin-top:0">Back to Workspace</a>'
+      '<br><br>'+(isLoggedIn()?'<a class="morebtn" href="/me" data-nav style="margin-top:0">Back to Planner</a>'
         :'<button class="morebtn" style="margin-top:0" onclick="openAuth(\'login\',\'admin\')">Log in</button>')+'</div>';
     return;
   }
   el.innerHTML=admShell('<div class="panel meempty" style="margin-top:18px"><div class="big">📊</div>Loading data…</div>');
   track('admin_view',{tab:currentAdminSub||'overview'});
+  if(currentAdminSub==='feedback'){
+    track('feedback_admin_view',{});
+    admFeedbackData().then(function(rows){
+      if(currentView!=='admin')return;
+      el.innerHTML=admShell(admFeedbackHTML(rows));
+      observeGrow(el);
+    }).catch(function(){
+      el.innerHTML=admShell('<div class="panel meempty" style="margin-top:18px"><div class="big">⚠️</div>Could not load feedback — check the v.21 Supabase setup.</div>');
+    });
+    return;
+  }
   admData().then(function(D){
     if(currentView!=='admin')return;
     var body=currentAdminSub==='users'?admUsersHTML(D)
@@ -2305,13 +2541,51 @@ function renderAdmin(sub){
   });
 }
 function admShell(inner){
-  var tabs=[['','Overview'],['users','Users'],['content','Content'],['events','Events & funnels']];
+  var tabs=[['','Overview'],['users','Users'],['content','Content'],['feedback','Feedback'],['events','Events & funnels']];
   return '<section class="mehead" style="padding-bottom:6px"><h1>Admin</h1>'+
     '<p>Signups and saved-content live here (Supabase); behavior funnels live in <a href="'+POSTHOG_PROJECT_URL+'" target="_blank" rel="noopener">PostHog</a>.</p></section>'+
     '<div class="admtabs">'+tabs.map(function(t){
       var on=(currentAdminSub||'')===t[0]||(t[0]==='events'&&currentAdminSub==='funnels');
       return '<a href="/admin'+(t[0]?'/'+t[0]:'')+'" data-nav class="admtab'+(on?' on':'')+'">'+t[1]+'</a>';}).join('')+'</div>'+
     inner+'<div style="height:46px"></div>';
+}
+async function admFeedbackData(){
+  var res=await sbClient.from('feedback_messages').select('id,user_id,email,title,body,status,created_at,updated_at').order('created_at',{ascending:false}).limit(100);
+  if(res.error)throw res.error;
+  return res.data||[];
+}
+function admFeedbackHTML(rows){
+  var counts=admDist(rows,'status','new');
+  var html=admStatCards([
+    {v:rows.length,l:'messages'},
+    {v:rows.filter(function(r){return r.status==='new';}).length,l:'new',cls:'coral'},
+    {v:rows.filter(function(r){return r.status==='reviewing';}).length,l:'reviewing',cls:'green'},
+    {v:rows.filter(function(r){return r.status==='closed';}).length,l:'closed'}
+  ]);
+  html+=admPanel('Feedback status','Latest 100 messages from the About page.',
+    counts.length?hBarsHTML(counts,rows.length||1,{color:'var(--primary)'}):'<div class="empty2">No feedback yet.</div>');
+  html+=admPanel('Messages','Use status buttons to triage messages after reading.',
+    rows.length?'<div class="feedbacklist">'+rows.map(admFeedbackCard).join('')+'</div>':'<div class="empty2">No feedback yet.</div>');
+  return html;
+}
+function admFeedbackCard(r){
+  var statuses=['new','reviewing','closed'];
+  return '<article class="fbcard rise"><div class="fbtop"><div><h3>'+esc(r.title||'(untitled)')+'</h3>'+
+    '<p>'+esc((r.created_at||'').slice(0,10))+' · '+esc(r.email||'—')+'</p></div>'+
+    '<span class="fbstatus '+esc(r.status||'new')+'">'+esc(r.status||'new')+'</span></div>'+
+    '<p class="fbbody">'+esc(r.body||'')+'</p>'+
+    '<div class="fbactions">'+statuses.map(function(s){
+      return '<button type="button" class="'+((r.status||'new')===s?'on':'')+'" onclick="setFeedbackStatus('+Number(r.id)+',\''+s+'\')">'+esc(s)+'</button>';
+    }).join('')+'</div></article>';
+}
+async function setFeedbackStatus(id,status){
+  if(!sbClient||!isAdmin())return;
+  try{
+    var res=await sbClient.from('feedback_messages').update({status:status,updated_at:new Date().toISOString()}).eq('id',id);
+    if(res.error){toast('Could not update feedback');return;}
+    _admCache=null;
+    renderAdmin('feedback');
+  }catch(e){toast('Could not update feedback');}
 }
 async function admData(){
   var now=Date.now();
@@ -2440,6 +2714,9 @@ function admEventsHTML(){
     ['x_filter / x_bar_open / x_sort / x_more','Explore engagement (incl. resource interest via filters)'],
     ['profile_updated / prep_stage_set / account_synced','profile completeness'],
     ['password_reset_requested / password_reset_done','recovery flow'],
+    ['account_menu_open / password_change_done','account menu and security actions'],
+    ['planner_prompt_click / planner_task_click','Study Planner assistant prompts and next-step clicks'],
+    ['feedback_submit / feedback_admin_view','About-page feedback and admin triage'],
   ];
   var funnels=[
     'Visitor → plan completed:  $pageview → intake_submit → plan_view',
@@ -2448,6 +2725,8 @@ function admEventsHTML(){
     'Return rate 1/7/30 days:  PostHog → Retention on $pageview',
     'Most-opened debriefs:  Trends on debrief_open, break down by "id"',
     'Resource interest:  Trends on x_filter / x_bar_open, break down by properties',
+    'Planner value:  planner_prompt_click → planner_task_click → progress_add',
+    'Feedback loop:  feedback_submit → feedback_admin_view',
   ];
   return admPanel('Product events this site sends','Definitions live in app.js/auth.js; every event goes to PostHog and Vercel Analytics.',
       '<ul class="admlist">'+events.map(function(e){return '<li><code>'+esc(e[0])+'</code> — '+esc(e[1])+'</li>';}).join('')+'</ul>')

@@ -1,1023 +1,7 @@
-#!/usr/bin/env python3
-"""v.19.2.1 — PrepSignals UX/UI refresh on top of v.19.2.
-
-Reads debriefs.json + post_details.json and writes a self-contained
-dashboard_v19_2_1.html. Charts are hand-rolled SVG/CSS (no chart library),
-and all aggregation happens in-browser.
-
-What changed vs v19.2:
-  UX
-  1. STEPPER INTAKE — the 4 questions now show one at a time in a single
-     card with a progress bar, auto-advance, and big tap targets (~75% of
-     traffic is mobile). Same ?p= links, same localStorage key.
-  2. PLAN AS STEPS — the result page is a numbered flow: gradient "score
-     path" ticket (jump, % who made it, typical prep, matches) -> Step 1
-     do-this-today -> Step 2 persistent weekly checklist (ticks saved per
-     plan in localStorage) -> Step 3 three focus areas. The old separate
-     "signals" section is merged away; copy de-jargoned throughout.
-  3. DEEPER EXPLORE — an auto-computed takeaway sentence under every
-     chart, two new analyses (retakes vs first try, self-study vs course),
-     tappable bars/rows that open the matching debriefs in the cohort
-     drawer, and search + sort on the browse list. Chart rows grouped
-     under color-coded kickers.
-  UI
-  4. One documented color system: Quant=blue, Verbal=violet, DI=teal (new
-     token — no longer sharing amber), resources=amber, practice
-     loop=indigo, timing/execution=green, score gains=coral.
-  5. Wider desktop canvas (1180px), full-bleed tinted band, floating hero
-     blobs, count-up numbers, confetti on plan build, staggered
-     reveal-on-scroll, larger mobile gaps and tap targets.
-
-Carried over: peer matching, insight drawers, deterministic per-section
-insights, no login / no backend, and the ?p= / ?band= / ?d= deep links.
-
-The template uses plain `__TOKEN__` placeholders filled by str.replace(), so the
-CSS/JS can use normal single braces with no escaping.
-"""
-import json
-import statistics as st
-from pathlib import Path
-
-BASE = Path(__file__).resolve().parent
-
-
-def main():
-    raw = json.loads((BASE / "debriefs.json").read_text())
-    details = json.loads((BASE / "post_details.json").read_text())
-
-    for d in raw:
-        d["tags"] = ["Debrief" if t == "Success Story" else t for t in d.get("tags", [])]
-    debriefs = [d for d in raw if "Debrief" in d.get("tags", [])]
-    ids = {d["post_id"] for d in debriefs}
-    details = {pid: {k: v for k, v in det.items() if k != "body"}
-               for pid, det in details.items() if pid in ids}
-
-    deb = [{
-        "id": d["post_id"], "date": d["date"], "title": d["title"],
-        "total": d["total_score"], "q": d["q_score"], "v": d["v_score"], "di": d["di_score"],
-        "resources": d["resources"], "strat": d["strategy_items"],
-        "tags": [t for t in d["tags"] if t != "Debrief"], "source": d["source"],
-        "permalink": d["permalink"].replace("old.reddit.com", "www.reddit.com"),
-        "attempts": d["attempts"], "prep_weeks": d["prep_weeks"],
-        "gain": d["point_gain"], "start": d["start_score"],
-        "sreason": d.get("sreason", ""), "nreplies": d.get("n_replies"),
-    } for d in debriefs]
-
-    scores = [d["total"] for d in deb if d["total"]]
-    dates = [d["date"] for d in deb if d.get("date")]
-    min_date, max_date = (min(dates), max(dates)) if dates else ("", "")
-
-    # Target bands, tuned to the real data (every debrief is 655-805, median ~705).
-    bands = [
-        {"key": "b1", "lo": 655, "hi": 695, "label": "655 – 695",
-         "name": "Building toward 700", "blurb": "Solid scores, closing the last gap."},
-        {"key": "b2", "lo": 705, "hi": 745, "label": "705 – 745",
-         "name": "The 700+ club", "blurb": "The classic business-school target."},
-        {"key": "b3", "lo": 755, "hi": 805, "label": "755 – 805",
-         "name": "Top scores", "blurb": "The rarefied air near the ceiling."},
-    ]
-    for b in bands:
-        b["count"] = sum(1 for s in scores if b["lo"] <= s <= b["hi"])
-
-    # Current-score buckets, tuned to the real start_score data (375-715, median 595).
-    curb = [
-        {"key": "c1", "lo": 0, "hi": 604, "label": "Under 605", "name": "Early diagnostic or first mock"},
-        {"key": "c2", "lo": 605, "hi": 654, "label": "605 – 654", "name": "Warming up"},
-        {"key": "c3", "lo": 655, "hi": 694, "label": "655 – 694", "name": "Already close"},
-        {"key": "c4", "lo": 695, "hi": 9999, "label": "695+", "name": "Refining at the top"},
-    ]
-
-    # Weeks-until-test buckets, tuned to the real prep_weeks data (1-157, median 9).
-    weekb = [
-        {"key": "w1", "lo": 0, "hi": 3, "label": "Less than 4 weeks"},
-        {"key": "w2", "lo": 4, "hi": 7, "label": "4 – 7 weeks"},
-        {"key": "w3", "lo": 8, "hi": 12, "label": "8 – 12 weeks"},
-        {"key": "w4", "lo": 13, "hi": 9999, "label": "13+ weeks"},
-    ]
-
-    # Point-gain buckets (start_score -> total_score) for the Explore gain chart.
-    gainb = [
-        {"key": "g1", "lo": 0, "hi": 49, "label": "< 50"},
-        {"key": "g2", "lo": 50, "hi": 99, "label": "50–99"},
-        {"key": "g3", "lo": 100, "hi": 149, "label": "100–149"},
-        {"key": "g4", "lo": 150, "hi": 199, "label": "150–199"},
-        {"key": "g5", "lo": 200, "hi": 9999, "label": "200+"},
-    ]
-
-    # Prep-duration buckets for the Explore "score by prep time" chart.
-    prepb = [
-        {"key": "p1", "lo": 0, "hi": 4, "label": "0–4w"},
-        {"key": "p2", "lo": 5, "hi": 8, "label": "5–8w"},
-        {"key": "p3", "lo": 9, "hi": 12, "label": "9–12w"},
-        {"key": "p4", "lo": 13, "hi": 24, "label": "13–24w"},
-        {"key": "p5", "lo": 25, "hi": 9999, "label": "25w+"},
-    ]
-
-    deb_js = json.dumps(deb, ensure_ascii=False, separators=(",", ":"))
-    details_js = json.dumps(details, ensure_ascii=False, separators=(",", ":"))
-    bands_js = json.dumps(bands, ensure_ascii=False)
-    curb_js = json.dumps(curb, ensure_ascii=False)
-    weekb_js = json.dumps(weekb, ensure_ascii=False)
-    gainb_js = json.dumps(gainb, ensure_ascii=False)
-    prepb_js = json.dumps(prepb, ensure_ascii=False)
-
-    tooltips = {
-        "Maybe Promo": "Possible promotional signals (brand-endorsement framing, a vendor "
-                       "rep in comments, or readers asking if it's an ad) — open it and judge.",
-        "Self Study": "Used only free resources (GMAT Club, GMAT Ninja, Official Guide, "
-                      "Official Mocks) or no named resource at all — no paid prep course.",
-    }
-
-    html = (TEMPLATE
-            .replace("__DEB__", deb_js)
-            .replace("__DETAILS__", details_js)
-            .replace("__BANDS__", bands_js)
-            .replace("__CURB__", curb_js)
-            .replace("__WEEKB__", weekb_js)
-            .replace("__GAINB__", gainb_js)
-            .replace("__PREPB__", prepb_js)
-            .replace("__TOOLTIPS__", json.dumps(tooltips, ensure_ascii=False))
-            .replace("__NDEB__", str(len(deb)))
-            .replace("__MEDIAN__", str(int(st.median(scores))) if scores else "—")
-            .replace("__MINDATE__", min_date).replace("__MAXDATE__", max_date))
-    (BASE / "dashboard_v19_2_1.html").write_text(html)
-    print(f"dashboard_v19_2_1.html written. {len(deb)} debriefs, {len(details)} detail pages.")
-    for b in bands:
-        print(f"  target {b['label']}: {b['count']}")
-
-
-TEMPLATE = r"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>PrepSignals — your personal GMAT score plan</title>
-<meta name="description" content="Answer four quick questions and get a personal GMAT score path matched to __NDEB__ real debriefs from people who started near you and reached your target.">
-<script>
-window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};
-window.si=window.si||function(){(window.siq=window.siq||[]).push(arguments);};
-(function(){
-  var h=location.hostname;
-  if(location.protocol==='file:'||h==='localhost'||h==='127.0.0.1'||h==='')return;
-  var a=document.createElement('script');a.defer=true;a.src='/_vercel/insights/script.js';document.head.appendChild(a);
-  var s=document.createElement('script');s.defer=true;s.src='/_vercel/speed-insights/script.js';document.head.appendChild(s);
-})();
-</script>
-<style>
-/* COLOR SYSTEM — one meaning per hue, everywhere:
-   Quant=blue · Verbal=violet · Data Insights=teal · resources=amber
-   practice loop / brand=indigo(primary) · timing+test-day=green · score gains=coral */
-:root{
-  --bg:#f5f6fb; --surface:#ffffff; --surface-2:#fbfbfe;
-  --ink:#1b1e2e; --ink-2:#586079; --ink-3:#929ab0;
-  --primary:#5b5bd6; --primary-d:#4a46c9; --primary-l:#edecfb;
-  --coral:#ff6b5b; --coral-d:#d6452f; --coral-l:#ffeeec;
-  --green:#15a34a; --green-d:#0f7a37; --green-l:#e6f6ec;
-  --amber:#e08a00; --amber-l:#fdf0d9;
-  --violet:#7c5cf0; --violet-l:#efeafe;
-  --teal:#0d9488; --teal-d:#0b7a70; --teal-l:#d9f2ee;
-  --blue:#2f74e0; --blue-l:#e6f0fd;
-  --border:#e8e8f1; --border-2:#dcdce9;
-  --radius:18px; --radius-sm:12px;
-  --shadow:0 1px 2px rgba(20,20,55,.05), 0 6px 20px rgba(28,28,80,.05);
-  --shadow-lg:0 18px 50px rgba(28,28,80,.16);
-  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",system-ui,"Inter",Roboto,sans-serif;
-  --ease:cubic-bezier(.22,.61,.36,1);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.55;
-  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
-a{color:inherit;text-decoration:none}
-button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-h1,h2,h3{letter-spacing:-.02em;line-height:1.15}
-
-/* ---- top bar ---- */
-header.bar{position:sticky;top:0;z-index:40;background:rgba(245,246,251,.82);
-  backdrop-filter:saturate(1.6) blur(12px);-webkit-backdrop-filter:saturate(1.6) blur(12px);
-  border-bottom:1px solid var(--border)}
-.bar .wrap{display:flex;align-items:center;justify-content:space-between;height:62px;gap:10px}
-.logo{font-size:20px;font-weight:800;letter-spacing:-.03em;color:var(--ink);flex:none;white-space:nowrap}
-.logo b{color:var(--primary);font-weight:800}
-.logo .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--coral);
-  margin-left:1px;transform:translateY(-1px)}
-.nav{display:flex;gap:6px;align-items:center;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.nav::-webkit-scrollbar{display:none}
-.nav button{font-size:14.5px;font-weight:600;color:var(--ink-2);padding:8px 13px;border-radius:10px;
-  transition:.18s var(--ease);white-space:nowrap;flex:none}
-.nav button:hover{background:var(--surface);color:var(--ink)}
-.nav button.on{color:var(--primary);background:var(--primary-l)}
-.navshort{display:none}
-
-/* ---- hero ---- */
-.hero{padding:50px 0 18px;text-align:center;position:relative}
-.hero::before{content:"";position:absolute;inset:-40px 0 auto;height:340px;z-index:-1;
-  background:radial-gradient(120% 90% at 50% -8%,rgba(124,92,240,.16),rgba(91,91,214,.05) 38%,transparent 64%)}
-.eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
-  color:var(--primary-d);background:var(--primary-l);padding:6px 13px;border-radius:30px;margin-bottom:20px}
-.eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--green)}
-.hero h1{font-size:clamp(30px,6.4vw,52px);font-weight:800;margin:0 auto 16px;max-width:17ch}
-.hero p.lede{font-size:clamp(16px,2.4vw,19px);color:var(--ink-2);max-width:62ch;margin:0 auto 8px}
-.hero p.lede b{color:var(--ink);font-weight:700}
-.hero h1 em{font-style:normal;background:linear-gradient(92deg,var(--primary) 10%,var(--violet) 55%,var(--coral));
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--primary)}
-.blob{position:absolute;border-radius:50%;filter:blur(64px);opacity:.5;z-index:-1;pointer-events:none}
-.blob.b1{width:340px;height:340px;left:2%;top:-70px;background:#cdcbf7;animation:floaty 11s ease-in-out infinite}
-.blob.b2{width:300px;height:300px;right:3%;top:-10px;background:#ffddd6;animation:floaty 13s ease-in-out infinite reverse}
-.blob.b3{width:220px;height:220px;right:26%;top:120px;background:#c9ece7;animation:floaty 15s ease-in-out 1s infinite}
-@keyframes floaty{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(20px,-16px) scale(1.07)}}
-
-/* ---- quiz (stepper intake: one question per screen) ---- */
-.quiz{max-width:660px;margin:26px auto 0}
-.stepcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:24px 24px 20px;box-shadow:var(--shadow);text-align:left;overflow:hidden}
-.stepbar{display:flex;align-items:center;gap:10px;margin-bottom:20px}
-.stepbar .track{flex:1;height:7px;background:var(--surface-2);border-radius:8px;overflow:hidden}
-.stepbar .fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--primary),var(--violet));
-  transition:width .4s var(--ease)}
-.stepbar .stepct{font-size:12.5px;font-weight:800;color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
-.stepin{animation:stepin .32s var(--ease)}
-@keyframes stepin{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
-.qtitle{font-size:20px;font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
-.qtitle .qico{font-size:22px;line-height:1;flex:none}
-.qsub{font-size:14px;color:var(--ink-2);margin:6px 0 18px}
-.qopts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.qopt{background:var(--surface-2);border:1.5px solid var(--border);border-radius:14px;
-  padding:14px 15px;text-align:left;transition:.16s var(--ease);min-height:58px}
-.qopt:hover{border-color:var(--primary);transform:translateY(-1px)}
-.qopt:active{transform:scale(.98)}
-.qopt.on{background:var(--primary-l);border-color:var(--primary)}
-.qopt .ol{font-size:15px;font-weight:800;color:var(--ink)}
-.qopt.on .ol{color:var(--primary-d)}
-.qopt .os{font-size:12.5px;color:var(--ink-2);margin-top:2px}
-.stepnav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;min-height:34px}
-.stepback{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--ink-2);
-  padding:8px 12px;border-radius:10px;transition:.15s var(--ease)}
-.stepback:hover{background:var(--surface-2);color:var(--ink)}
-.quizmatch{font-size:13.5px;color:var(--ink-2);text-align:center;margin:14px 0 0}
-.quizmatch b{color:var(--primary-d)}
-.quizmatch .pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px}
-.quizsubmit{font-size:16px;font-weight:800;color:#fff;background:var(--primary);padding:13px 24px;
-  border-radius:14px;transition:.18s var(--ease);display:inline-flex;align-items:center;gap:8px;margin-left:auto}
-.quizsubmit:not(:disabled):hover{background:var(--primary-d);transform:translateY(-1px)}
-.quizsubmit:active{transform:scale(.98)}
-.quizsubmit:disabled{opacity:.35;cursor:not-allowed}
-
-/* ---- plan head ---- */
-.planhead{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:22px;box-shadow:var(--shadow);margin-top:8px}
-.planhead .ptop{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.planhead h2{font-size:21px;font-weight:800}
-.planhead p{font-size:14px;color:var(--ink-2);margin-top:5px;max-width:60ch}
-.editlink{font-size:13px;font-weight:700;color:var(--primary-d);background:var(--primary-l);
-  border-radius:10px;padding:8px 12px;white-space:nowrap;flex:none}
-.pacecall{margin-top:16px;background:var(--surface-2);border:1px solid var(--border);
-  border-radius:14px;padding:13px 15px;font-size:13.5px;color:var(--ink-2)}
-.pacecall b{color:var(--ink)}
-.matchflag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
-  color:var(--amber);background:var(--amber-l);border-radius:20px;padding:4px 10px;margin-top:10px}
-.primaryrec{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;margin-top:16px;
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.primaryrec::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--pr,var(--primary))}
-.primaryrec .ey{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
-  text-transform:uppercase;letter-spacing:.05em;color:var(--pr,var(--primary-d));background:var(--pr-l,var(--primary-l));
-  border-radius:20px;padding:4px 10px;margin-bottom:12px}
-.primaryrec h3{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:7px}
-.primaryrec p{font-size:14.5px;color:var(--ink-2);max-width:68ch;line-height:1.55}
-.primaryrec .metric{font-size:13px;color:var(--ink-2);margin-top:12px}
-.primaryrec .metric b{color:var(--ink);font-weight:800}
-.primaryrec .actbtn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  color:#fff;background:var(--pr,var(--primary));border-radius:12px;padding:11px 16px;font-size:14px;
-  font-weight:800;transition:.16s var(--ease);white-space:nowrap}
-.primaryrec .actbtn:hover{filter:brightness(.92);transform:translateY(-1px)}
-.leverintro{font-size:14.5px;color:var(--ink-2);margin-top:7px;max-width:62ch}
-.evidence{margin-top:20px}
-.evidence>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
-  cursor:pointer;padding:20px 22px;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);box-shadow:var(--shadow)}
-.evidence>summary::-webkit-details-marker{display:none}
-.evidence h2{font-size:22px;font-weight:800}
-.evidence .sumsub{font-size:14px;color:var(--ink-2);margin-top:4px;max-width:68ch}
-.evidence .sumicon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  color:var(--primary-d);background:var(--primary-l);font-weight:900;transition:.18s var(--ease);flex:none}
-.evidence[open] .sumicon{transform:rotate(180deg)}
-.evidencebody{padding:20px 0 0}
-/* ---- score-path ticket (gradient hero card) ---- */
-.ticket{position:relative;overflow:hidden;border-radius:22px;padding:26px 28px;color:#fff;margin-top:8px;
-  background:linear-gradient(128deg,#4f4cd0,#6f58ec 52%,#8b5cf6);box-shadow:0 18px 44px rgba(80,70,220,.32)}
-.ticket::before{content:"";position:absolute;right:-80px;top:-90px;width:280px;height:280px;border-radius:50%;
-  background:rgba(255,255,255,.1)}
-.ticket::after{content:"";position:absolute;left:-60px;bottom:-110px;width:230px;height:230px;border-radius:50%;
-  background:rgba(255,255,255,.07)}
-.ticket>*{position:relative;z-index:1}
-.tktop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
-.ticket .ey{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
-  text-transform:uppercase;letter-spacing:.06em;color:#fff;background:rgba(255,255,255,.16);
-  border-radius:20px;padding:5px 11px}
-.tkedit{font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.16);border-radius:10px;
-  padding:8px 13px;transition:.15s var(--ease);white-space:nowrap}
-.tkedit:hover{background:rgba(255,255,255,.26)}
-.ticket .jumpnode .jn,.ticket .jumpnode.target .jn{color:#fff}
-.ticket .jumpnode .jl{color:rgba(255,255,255,.72)}
-.ticket .jumparrow .jtrack{background:repeating-linear-gradient(90deg,rgba(255,255,255,.85) 0 16px,rgba(255,255,255,.3) 16px 26px);
-  background-size:42px 100%;animation:flow 1.5s linear infinite}
-@keyframes flow{to{background-position:42px 0}}
-.ticket .jumparrow .jhead{border-left-color:#fff}
-.ticket .jumparrow .jgain{background:#fff;border:none;color:var(--primary-d)}
-.tkstats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
-.tkstat{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 15px}
-.tkstat .n{font-size:27px;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
-.tkstat .n small{font-size:15px;font-weight:800;opacity:.85}
-.tkstat .l{font-size:12.5px;font-weight:650;color:rgba(255,255,255,.8);margin-top:5px;line-height:1.3}
-.tknote{margin-top:16px;font-size:14px;color:rgba(255,255,255,.85);max-width:74ch;line-height:1.55}
-.tknote b,.tkpace b{color:#fff}
-.tkpace{margin-top:12px;background:rgba(255,255,255,.12);border-radius:12px;padding:11px 14px;
-  font-size:13.5px;color:rgba(255,255,255,.85);line-height:1.5}
-.tkflag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;
-  background:rgba(255,255,255,.16);border-radius:20px;padding:4px 11px;margin-top:12px}
-
-/* ---- Step 2: weekly checklist ---- */
-.checkwrap{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:20px 22px;box-shadow:var(--shadow)}
-.checkhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-.checkhead .chkcount{font-size:12.5px;font-weight:800;color:var(--green-d);background:var(--green-l);
-  border-radius:20px;padding:5px 11px;white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
-.checklist{display:flex;flex-direction:column;gap:10px}
-.chk{display:flex;align-items:flex-start;gap:13px;text-align:left;background:var(--surface-2);
-  border:1.5px solid var(--border);border-radius:14px;padding:14px 15px;transition:.16s var(--ease);width:100%}
-.chk:hover{border-color:var(--border-2);transform:translateY(-1px)}
-.chk .box{flex:none;width:24px;height:24px;border-radius:8px;border:2px solid var(--border-2);
-  background:var(--surface);display:flex;align-items:center;justify-content:center;color:#fff;
-  transition:.18s var(--ease);margin-top:1px}
-.chk .box svg{opacity:0;transform:scale(.4);transition:.18s var(--ease)}
-.chk.done{border-color:var(--green);background:var(--green-l)}
-.chk.done .box{background:var(--green);border-color:var(--green);animation:pop .3s var(--ease)}
-.chk.done .box svg{opacity:1;transform:scale(1)}
-.chk .txt{font-size:14px;color:var(--ink);line-height:1.5}
-.chk .txt b{font-weight:750}
-.chk.done .txt{color:var(--ink-3);text-decoration:line-through;text-decoration-color:rgba(21,163,74,.5)}
-@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
-
-/* ---- kickers, takeaways, full-bleed band ---- */
-.kicker{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--ink-3);margin:30px 0 13px}
-.kicker .kdot{width:9px;height:9px;border-radius:50%;flex:none}
-.takeaway{display:flex;gap:9px;align-items:flex-start;margin-top:13px;padding:11px 13px;border-radius:12px;
-  background:var(--surface-2);border:1px solid var(--border);font-size:13px;color:var(--ink-2);line-height:1.5}
-.takeaway b{color:var(--ink);font-weight:800}
-.takeaway .tico{color:var(--primary);font-weight:900;flex:none;line-height:1.4}
-.chartcard .takeaway{margin-top:22px}
-.bleed{background:#ecedf7;box-shadow:0 0 0 100vmax #ecedf7;clip-path:inset(0 -100vmax)}
-
-/* ---- self-study vs course duel ---- */
-.duel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
-.duelcol{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:14px 15px;
-  text-align:left;transition:.16s var(--ease);width:100%;cursor:pointer}
-.duelcol:hover{border-color:var(--border-2);transform:translateY(-1px)}
-.duelcol .dh{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;border-radius:20px;
-  padding:4px 10px;margin-bottom:10px}
-.duelrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:7px 0;
-  border-top:1px solid var(--border);font-size:12.5px;color:var(--ink-2);font-weight:650}
-.duelrow .dn{font-size:19px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
-
-/* ---- reveal-on-scroll, clickable bar rows, confetti ---- */
-.rise{opacity:0;transform:translateY(18px);transition:opacity .55s var(--ease),transform .55s var(--ease)}
-.rise.grown{opacity:1;transform:none}
-.chartgrid .rise:nth-child(2){transition-delay:.1s}
-.actiongrid .rise:nth-child(2){transition-delay:.09s}
-.actiongrid .rise:nth-child(3){transition-delay:.18s}
-#doFirst.rise{transition-delay:.08s}
-#planWeek .rise{transition-delay:.16s}
-.barbtn{cursor:pointer;border-radius:10px;padding:4px 6px;margin:-4px -6px;transition:.14s var(--ease)}
-.barbtn:hover{background:var(--surface-2)}
-.confetti{position:absolute;left:50%;top:34%;width:0;height:0;z-index:3;pointer-events:none}
-.confetti i{position:absolute;width:9px;height:13px;border-radius:2px;opacity:0;
-  animation:conf 1s var(--ease) forwards;animation-delay:var(--cd)}
-@keyframes conf{0%{opacity:1;transform:translate(0,0) rotate(0)}
-  100%{opacity:0;transform:translate(var(--cx),var(--cy)) rotate(var(--cr))}}
-
-/* ---- band picker (explore tab) ---- */
-.bands{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 auto;max-width:760px}
-.band{position:relative;text-align:left;background:var(--surface);border:1.5px solid var(--border);
-  border-radius:var(--radius);padding:18px 18px 16px;transition:.2s var(--ease);overflow:hidden}
-.band::after{content:"";position:absolute;left:0;top:0;height:4px;width:100%;
-  background:var(--bandc,var(--primary));opacity:.9}
-.band:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--border-2)}
-.band.on{border-color:var(--bandc,var(--primary));box-shadow:0 0 0 3px var(--bandc-l,var(--primary-l))}
-.band .bnum{font-size:23px;font-weight:800;letter-spacing:-.03em;color:var(--ink);margin-top:4px}
-.band .bname{font-size:14.5px;font-weight:700;color:var(--bandc-d,var(--primary-d));margin-top:2px}
-.band .bblurb{font-size:13px;color:var(--ink-2);margin-top:7px;line-height:1.4;min-height:36px}
-.band .bcount{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-3);
-  margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
-.band .bcount b{color:var(--ink);font-weight:800}
-.band .barrow{position:absolute;right:16px;bottom:14px;color:var(--bandc,var(--primary));
-  opacity:0;transform:translateX(-4px);transition:.2s var(--ease);font-size:18px}
-.band:hover .barrow,.band.on .barrow{opacity:1;transform:translateX(0)}
-
-/* ---- generic section + panels ---- */
-section.block{padding:34px 0}
-.shead{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px}
-.shead h2{font-size:clamp(21px,3.4vw,27px);font-weight:800}
-.shead .sub{font-size:14.5px;color:var(--ink-2);margin-top:5px;max-width:62ch}
-.shead .sub b{color:var(--ink);font-weight:700}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:22px;box-shadow:var(--shadow)}
-.panel + .panel{margin-top:16px}
-.panel h3{font-size:17px;font-weight:800;margin-bottom:3px}
-.panel h3 .hint{font-size:13px;font-weight:600;color:var(--ink-3);margin-left:8px}
-.psub{font-size:13.5px;color:var(--ink-2);margin-bottom:18px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;grid-auto-rows:1fr}
-.grid2>.panel{min-height:320px;height:100%;align-self:stretch;display:flex;flex-direction:column}
-.grid2>.panel .growfill{flex:1}
-
-/* ---- action plan ---- */
-.actiongrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
-.actioncard{min-height:232px;text-align:left;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;
-  position:relative;overflow:hidden;transition:.2s var(--ease)}
-.actioncard::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--ac,var(--primary))}
-.actioncard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--border-2)}
-.actioncard .k{display:inline-flex;align-items:center;gap:7px;align-self:flex-start;font-size:11.5px;
-  font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ac,var(--primary));
-  background:var(--acl,var(--primary-l));border-radius:20px;padding:4px 9px;margin-bottom:13px}
-.actioncard h3{font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
-.actioncard p{font-size:13.5px;color:var(--ink-2);line-height:1.48;margin-bottom:14px}
-.actioncard .metric{margin-top:auto;border-top:1px solid var(--border);padding-top:12px;font-size:13px;color:var(--ink-2)}
-.actioncard .metric b{font-size:20px;line-height:1;color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
-.actioncard .actbtn{margin-top:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  color:var(--ac,var(--primary));background:var(--acl,var(--primary-l));border-radius:11px;padding:9px 12px;
-  font-size:13px;font-weight:800;transition:.16s var(--ease)}
-.actioncard .actbtn:hover{filter:saturate(1.1) brightness(.98)}
-
-/* ---- insight panels (explore tab) ---- */
-.insightcard{min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
-.insightcard h3{font-size:17px;font-weight:800;margin-bottom:4px}
-.callout{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:13px 14px;
-  color:var(--ink-2);font-size:13.5px;line-height:1.45;margin-top:auto}
-.callout b{color:var(--ink);font-weight:800}
-.minirow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
-.ministat{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
-.ministat .n{font-size:24px;font-weight:800;letter-spacing:-.03em;color:var(--primary);line-height:1}
-.ministat .l{font-size:12.5px;font-weight:700;color:var(--ink-2);margin-top:4px;line-height:1.25}
-.insightbtn{display:inline-flex;align-items:center;gap:7px;align-self:flex-start;margin-top:14px;
-  color:var(--primary-d);background:var(--primary-l);border-radius:11px;padding:9px 12px;font-size:13px;
-  font-weight:800}
-.heatmap{display:grid;grid-template-columns:minmax(120px,1.35fr) repeat(3,1fr);gap:7px;margin-top:2px}
-.hmhead,.hmcell,.hmlabel{min-height:42px;border-radius:11px;display:flex;align-items:center}
-.hmhead{justify-content:center;font-size:11.5px;font-weight:800;color:var(--ink-3);background:var(--surface-2)}
-.hmlabel{font-size:12.5px;font-weight:750;color:var(--ink);line-height:1.2;padding:8px 10px;background:var(--surface-2)}
-.hmcell{justify-content:center;font-size:12.5px;font-weight:800;color:var(--ink);background:rgba(91,91,214,var(--a,.08));
-  border:1px solid rgba(91,91,214,.08)}
-.hmcell button{width:100%;height:100%;border-radius:11px;font-weight:800;color:inherit}
-
-/* ---- stat chips ---- */
-.statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
-  padding:15px 16px;box-shadow:var(--shadow)}
-.stat .v{font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--primary)}
-.stat .l{font-size:12.5px;font-weight:600;color:var(--ink-2);margin-top:2px}
-.stat.green .v{color:var(--green)}
-.stat.coral .v{color:var(--coral-d)}
-
-/* ---- horizontal animated bars (tactics, resources) ---- */
-.bars{display:flex;flex-direction:column;gap:13px}
-.barrow{display:grid;grid-template-columns:1fr;gap:5px}
-.barrow .blabel{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px}
-.barrow .bname{font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;min-width:0}
-.barrow .bname span.txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.barrow .bpct{font-weight:700;color:var(--ink-2);font-variant-numeric:tabular-nums;flex:none}
-.bartrack{height:11px;background:var(--surface-2);border-radius:8px;overflow:hidden}
-.barfill{height:100%;width:0;border-radius:8px;background:var(--primary);
-  transition:width 1s var(--ease)}
-.grown .barfill{width:var(--w)}
-
-/* ---- score distribution ---- */
-.dist{height:370px;min-height:370px;width:100%;position:relative;margin-top:6px}
-.dist svg{display:block;width:100%;height:100%;overflow:visible}
-.dist .dbase{stroke:var(--border-2);stroke-width:1}
-.dist .dbar{transform-box:fill-box;transform-origin:center bottom;transform:scaleY(0);transition:transform .9s var(--ease)}
-.dist.grown .dbar{transform:scaleY(1)}
-.dist .dbar.all{fill:#d7d8e7}
-.dist .dbar.inband{fill:url(#distGrad)}
-.dist .dlabel{fill:var(--ink-3);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
-.dist .dlabel.inband{fill:var(--primary-d)}
-.dist .dcount{fill:var(--ink-2);font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
-.distnote{font-size:13px;color:var(--ink-2);margin-top:10px;display:flex;align-items:center;gap:8px}
-.distnote .key{display:inline-block;width:11px;height:11px;border-radius:3px;
-  background:linear-gradient(var(--primary),var(--violet))}
-
-/* ---- debrief cards ---- */
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.card{display:block;text-align:left;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:17px 18px;box-shadow:var(--shadow);
-  transition:.2s var(--ease);position:relative;width:100%}
-.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--border-2)}
-.card .ctop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-.score-badge{display:inline-flex;align-items:baseline;gap:3px;font-weight:800;color:var(--green-d);
-  background:var(--green-l);padding:4px 11px;border-radius:30px;font-size:16px;letter-spacing:-.02em;flex:none}
-.score-badge small{font-size:10.5px;font-weight:700;opacity:.7}
-.card .src{font-size:11.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.03em}
-.card .ctitle{font-size:15.5px;font-weight:700;line-height:1.32;margin-bottom:11px;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card .ctags{display:flex;flex-wrap:wrap;gap:6px}
-.minichip{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;
-  background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2);
-  display:inline-flex;align-items:center;gap:5px}
-.minichip .d{width:6px;height:6px;border-radius:50%}
-.card .cmeta{font-size:12.5px;color:var(--ink-3);margin-top:11px;display:flex;gap:12px;flex-wrap:wrap}
-.card .cmeta b{color:var(--ink-2);font-weight:700}
-
-.morebtn{display:inline-flex;align-items:center;gap:8px;margin-top:18px;font-size:14.5px;
-  font-weight:700;color:var(--primary-d);background:var(--primary-l);padding:11px 18px;border-radius:12px;
-  transition:.18s var(--ease)}
-.morebtn:hover{background:#e3e2fa;transform:translateY(-1px)}
-
-/* tag pills (Maybe Promo / Self Study) */
-.tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
-.tag.promo{background:var(--coral-l);color:var(--coral-d)}
-.tag.self{background:var(--green-l);color:var(--green-d)}
-
-/* ---- browse-all ---- */
-.tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;background:var(--surface);
-  border:1.5px solid var(--border);border-radius:12px;padding:0 14px;height:46px;transition:.16s var(--ease)}
-.search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l)}
-.search input{flex:1;min-width:0;border:none;outline:none;background:none;font-size:15px;color:var(--ink);height:100%;
-  overflow:hidden;text-overflow:ellipsis}
-.search svg{color:var(--ink-3);flex:none}
-select.pick{height:46px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface);
-  padding:0 14px;font-size:14.5px;font-weight:600;color:var(--ink-2);outline:none;cursor:pointer}
-select.pick:focus{border-color:var(--primary)}
-#browseList{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.empty{padding:34px;text-align:center;color:var(--ink-3);font-size:15px}
-
-/* ---- detail + cohort overlays ---- */
-.detail,.cohort{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;
-  opacity:0;visibility:hidden;transition:opacity .26s var(--ease)}
-.detail{z-index:70}
-.cohort{z-index:60}
-.detail.on,.cohort.on{opacity:1;visibility:visible}
-.detail .dinner,.cohort .dinner{transform:translateY(14px);transition:transform .3s var(--ease)}
-.detail.on .dinner,.cohort.on .dinner{transform:translateY(0)}
-.dtop,.ctopbar{position:sticky;top:0;background:rgba(245,246,251,.85);backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:2}
-.dtop .wrap,.ctopbar .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
-.backbtn{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--ink);
-  padding:9px 14px 9px 10px;border-radius:11px;transition:.16s var(--ease)}
-.backbtn:hover{background:var(--surface)}
-.cohorthead{padding:30px 0 18px}
-.cohorthead h2{font-size:clamp(24px,4vw,34px);font-weight:800;margin-bottom:8px}
-.cohorthead p{color:var(--ink-2);font-size:15.5px;max-width:64ch}
-.cohortmeta{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
-.cohortmeta span{font-size:12.5px;font-weight:750;color:var(--ink-2);background:var(--surface);
-  border:1px solid var(--border);border-radius:20px;padding:5px 10px}
-.cohortinsight{margin-bottom:18px}
-.draweranswer{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.draweranswer::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--drawer,var(--primary))}
-.draweranswer .ey{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
-  text-transform:uppercase;letter-spacing:.05em;color:var(--drawer,var(--primary));background:var(--drawer-l,var(--primary-l));
-  border-radius:20px;padding:4px 10px;margin-bottom:12px}
-.draweranswer h3{font-size:23px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
-.draweranswer p{font-size:15px;color:var(--ink-2);line-height:1.58;max-width:72ch}
-.insightstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}
-.insightstat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
-.insightstat .n{font-size:23px;font-weight:800;letter-spacing:-.03em;color:var(--primary);line-height:1}
-.insightstat .l{font-size:12px;font-weight:700;color:var(--ink-2);margin-top:4px;line-height:1.25}
-.insightgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
-.insightpanel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:18px;box-shadow:var(--shadow)}
-.insightpanel h3{font-size:16px;font-weight:800;margin-bottom:12px}
-.takeaways{list-style:none;display:flex;flex-direction:column;gap:11px}
-.takeaways li{position:relative;padding-left:24px;font-size:14px;color:var(--ink);line-height:1.5}
-.takeaways li::before{content:"";position:absolute;left:5px;top:8px;width:7px;height:7px;border-radius:50%;
-  background:var(--drawer,var(--primary))}
-.nextmove{margin-top:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;
-  padding:14px 16px;font-size:14px;color:var(--ink-2);line-height:1.5}
-.nextmove b{color:var(--ink)}
-.stackchips{display:flex;flex-wrap:wrap;gap:8px}
-.stackchips span{font-size:13px;font-weight:700;color:var(--ink);background:var(--surface-2);
-  border:1px solid var(--border);border-radius:20px;padding:6px 11px}
-.cohortexamples{margin:18px 0 46px}
-.cohortexamples>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
-  cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:18px 20px;box-shadow:var(--shadow);margin-bottom:14px}
-.cohortexamples>summary::-webkit-details-marker{display:none}
-.cohortexamples h3{font-size:18px;font-weight:800}
-.cohortexamples p{font-size:13.5px;color:var(--ink-2);margin-top:3px}
-.cohortexamples .sumicon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  color:var(--primary-d);background:var(--primary-l);transition:.18s var(--ease);flex:none}
-.cohortexamples[open] .sumicon{transform:rotate(180deg)}
-.dhero{padding:30px 0 8px}
-.dhero .dscore{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-.dhero .big{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--green-d)}
-.dhero .big small{font-size:17px;color:var(--ink-3);font-weight:700;margin-left:4px}
-.dhero h1{font-size:clamp(22px,4vw,30px);font-weight:800;margin:6px 0 14px;max-width:24ch}
-.dmeta{display:flex;gap:10px;flex-wrap:wrap}
-.dmeta .m{font-size:13px;font-weight:600;color:var(--ink-2);background:var(--surface);
-  border:1px solid var(--border);border-radius:11px;padding:7px 12px}
-.dmeta .m b{color:var(--ink);font-weight:800}
-.dsection{margin-top:18px}
-.seccompare{display:flex;flex-direction:column;gap:18px}
-.cmp{display:grid;grid-template-columns:104px 1fr 38px;gap:14px;align-items:center}
-.cmp .cl{font-size:14px;font-weight:700;line-height:1.2}
-.cmp .cl small{display:block;font-size:11.5px;font-weight:600;color:var(--ink-3);margin-top:2px}
-.cmp .ctrack{position:relative;height:16px;background:var(--surface-2);border-radius:8px}
-.cmp .cbar{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:8px;opacity:.95;
-  transition:width .9s var(--ease)}
-.grown .cmp .cbar{width:var(--w)}
-.cmp .ctyp{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:2px;opacity:.42}
-.cmp .cscore{font-size:18px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
-.cmpkey{font-size:12px;color:var(--ink-3);margin-top:16px;display:flex;align-items:center;gap:7px}
-.cmpkey i{display:inline-block;width:2px;height:13px;background:var(--ink);opacity:.42;border-radius:2px}
-.notelist{list-style:none;display:flex;flex-direction:column;gap:11px}
-.notelist li{position:relative;padding-left:24px;font-size:14.5px;color:var(--ink);line-height:1.5}
-.notelist li::before{content:"";position:absolute;left:5px;top:8px;width:7px;height:7px;border-radius:50%;
-  background:var(--bullet,var(--primary))}
-.tacwrap{display:flex;flex-wrap:wrap;gap:8px}
-.tacchip{font-size:13px;font-weight:600;padding:6px 12px;border-radius:11px;
-  display:inline-flex;align-items:center;gap:7px}
-.reslist{display:flex;flex-wrap:wrap;gap:9px}
-.reschip{font-size:13.5px;font-weight:600;color:var(--ink);background:var(--surface-2);
-  border:1px solid var(--border);border-radius:11px;padding:8px 13px;display:inline-flex;align-items:center;gap:8px}
-.reschip .d{width:7px;height:7px;border-radius:50%;background:var(--primary)}
-
-/* ---- section insights (deterministic, per range) ---- */
-.secinsights{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
-.seccard{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:16px 17px}
-.seccard h4{font-size:14.5px;font-weight:800;display:flex;align-items:baseline;gap:7px;margin-bottom:2px}
-.seccard h4 .n{font-size:12px;font-weight:700;color:var(--ink-3)}
-.seccard .secn{font-size:12px;color:var(--ink-3);margin-bottom:10px}
-.seccard .tacwrap{margin-bottom:12px}
-.seccard .notelist li{font-size:13.5px}
-.seccard .empty2{font-size:13px;color:var(--ink-3);padding:6px 0}
-.spark{width:100%;height:320px;min-height:320px}
-.timelinecard{padding-bottom:18px}
-.timelinegrid{stroke:var(--border);stroke-width:1}
-.timelinearea{fill:rgba(91,91,214,.08)}
-.timelinepath{fill:none;stroke:var(--primary);stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
-.timelinepoint{fill:#fff;stroke:var(--primary);stroke-width:4}
-.spark .dlabel{fill:var(--ink-3);font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
-.timelabel{font-size:13px;font-weight:800;fill:var(--ink);paint-order:stroke;stroke:#fff;stroke-width:4px}
-.origin{display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:#fff;
-  background:var(--primary);padding:13px 20px;border-radius:13px;transition:.18s var(--ease);margin-top:4px}
-.origin:hover{background:var(--primary-d);transform:translateY(-1px)}
-
-/* ================= EXPLORE: filter toolbar ================= */
-.filterbar{position:sticky;top:62px;z-index:20;display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;
-  margin-bottom:20px;background:rgba(255,255,255,.9);backdrop-filter:saturate(1.4) blur(10px);
-  -webkit-backdrop-filter:saturate(1.4) blur(10px);border:1px solid var(--border);
-  border-radius:var(--radius);padding:13px 16px;box-shadow:var(--shadow)}
-.fgroup{display:flex;align-items:center;gap:8px;min-width:0}
-.flabel{font-size:11px;font-weight:800;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;flex:none}
-.chiprow{display:flex;gap:6px;flex-wrap:wrap}
-.fchip{font-size:13px;font-weight:700;color:var(--ink-2);background:var(--surface-2);
-  border:1.5px solid var(--border);border-radius:20px;padding:6px 12px;transition:.15s var(--ease);white-space:nowrap}
-.fchip:hover{border-color:var(--border-2)}
-.fchip.on{background:var(--primary-l);border-color:var(--primary);color:var(--primary-d)}
-.filterbar select.pick{height:38px;font-size:13.5px;padding:0 11px}
-.filterbar .spacer{flex:1;min-width:0}
-.fcount{font-size:13px;font-weight:700;color:var(--ink-2);white-space:nowrap}
-.fcount b{color:var(--primary-d);font-variant-numeric:tabular-nums}
-.freset{font-size:12.5px;font-weight:700;color:var(--ink-2);background:var(--surface-2);
-  border:1px solid var(--border);border-radius:10px;padding:7px 12px;flex:none}
-.freset:hover{color:var(--ink);border-color:var(--border-2)}
-
-/* ================= generic chart cards + SVG ================= */
-.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.chartgrid+.chartgrid{margin-top:16px}
-.chartgrid.one{grid-template-columns:1fr}
-.chartcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:322px}
-.chartcard h3{font-size:16px;font-weight:800;margin-bottom:3px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.chartcard h3 .hint{font-size:12px;font-weight:600;color:var(--ink-3)}
-.chartcard .psub{margin-bottom:14px}
-.chartbox{width:100%;height:244px;position:relative}
-.chartbox.tall{height:300px}
-.hbarbox{width:100%;padding-top:4px}
-.hbarbox .bars{gap:12px}
-.chartbox svg{display:block;width:100%;height:100%;overflow:visible}
-.chartempty{display:flex;align-items:center;justify-content:center;min-height:236px;color:var(--ink-3);
-  font-size:13.5px;text-align:center;padding:20px;line-height:1.5}
-.axis{stroke:var(--border-2);stroke-width:1}
-.gridline{stroke:var(--border);stroke-width:1;stroke-dasharray:3 4}
-.axlabel{fill:var(--ink-3);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
-.axtitle{fill:var(--ink-3);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
-.vbar{transform-box:fill-box;transform-origin:center bottom;transform:scaleY(0);transition:transform .8s var(--ease)}
-.grown .vbar{transform:scaleY(1)}
-.vcount{fill:var(--ink-2);font-size:11px;font-weight:800;font-variant-numeric:tabular-nums}
-.blabel2{fill:var(--ink-2);font-size:11.5px;font-weight:700}
-.legend{display:flex;gap:15px;flex-wrap:wrap;margin-top:13px;font-size:12.5px;font-weight:700;color:var(--ink-2)}
-.legend span{display:inline-flex;align-items:center;gap:6px}
-.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
-.dot{transition:opacity .25s var(--ease)}
-.trend{stroke-dasharray:7 5;stroke-width:2.4;fill:none;opacity:.85}
-
-/* ================= score-band jump (plan) ================= */
-.bandjump{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;
-  padding:18px 20px 16px;margin-top:6px}
-.jumprow{display:flex;align-items:center;gap:16px;flex-wrap:nowrap}
-.jumpnode{text-align:center;flex:none}
-.jumpnode .jn{font-size:27px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1}
-.jumpnode .jl{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-top:5px}
-.jumpnode.target .jn{color:var(--primary-d)}
-.jumparrow{flex:1;min-width:64px;position:relative;height:38px;display:flex;align-items:center}
-.jumparrow .jtrack{height:8px;width:100%;border-radius:8px;
-  background:linear-gradient(90deg,var(--blue),var(--primary),var(--violet))}
-.jumparrow .jhead{position:absolute;right:-2px;top:50%;transform:translateY(-50%);
-  border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid var(--violet)}
-.jumparrow .jgain{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12.5px;font-weight:800;
-  color:var(--primary-d);background:var(--surface);border:1px solid var(--border-2);border-radius:20px;
-  padding:2px 11px;white-space:nowrap}
-.bandjump .jnote{font-size:13px;color:var(--ink-2);margin-top:14px;line-height:1.5}
-.bandjump .jnote b{color:var(--ink)}
-
-/* ---- about ---- */
-.about h2{font-size:26px;font-weight:800;margin-bottom:12px}
-.about h3{font-size:16px;font-weight:800;margin:28px 0 8px}
-.about p{font-size:15px;color:var(--ink-2);max-width:68ch;margin-bottom:14px;line-height:1.65}
-.about a{color:var(--primary-d);font-weight:600}
-
-footer{border-top:1px solid var(--border);margin-top:40px;padding:30px 0 50px;color:var(--ink-3);font-size:13.5px}
-footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-footer a{color:var(--ink-2);font-weight:600}
-
-.hidden{display:none!important}
-
-/* ---- mobile ---- */
-@media(max-width:760px){
-  .wrap{padding:0 16px}
-  .bar .wrap{gap:6px}
-  .logo{font-size:17px}
-  .nav{gap:4px}
-  .nav button{font-size:13px;padding:7px 10px}
-  .navfull{display:none}
-  .navshort{display:inline}
-  .about{padding-left:20px;padding-right:20px}
-  .hero{padding:34px 0 8px;overflow:hidden}
-  .blob{filter:blur(46px);opacity:.4}
-  .stepcard{padding:19px 16px 16px}
-  .qtitle{font-size:18px}
-  .qopts{grid-template-columns:1fr 1fr;gap:9px}
-  .qopts.wide{grid-template-columns:1fr}
-  .ticket{padding:20px 17px;border-radius:18px}
-  .tkstats{gap:8px;margin-top:18px}
-  .tkstat{padding:11px 10px}
-  .tkstat .n{font-size:19px}
-  .tkstat .n small{font-size:11px}
-  .tkstat .l{font-size:11px}
-  .checkwrap{padding:16px}
-  .kicker{margin:24px 0 11px}
-  .duel{gap:9px}
-  .duelcol{padding:12px 11px}
-  .duelrow .dn{font-size:16px}
-  .primaryrec{grid-template-columns:1fr;padding:18px}
-  .primaryrec .actbtn{width:100%}
-  .evidence>summary{padding:18px}
-  .evidencebody{padding:18px 0 0}
-  .bands{grid-template-columns:1fr;gap:11px;max-width:440px}
-  .band{padding:16px 17px}
-  .band .bblurb{min-height:0}
-  .band .barrow{opacity:1;transform:none}
-  .actiongrid{grid-template-columns:1fr;gap:13px}
-  .actioncard{min-height:0}
-  .statrow{grid-template-columns:1fr 1fr;gap:11px}
-  .insightstats{grid-template-columns:1fr 1fr}
-  .insightgrid{grid-template-columns:1fr}
-  .grid2{grid-template-columns:1fr}
-  .grid2>.panel{min-height:0;height:auto}
-  .secinsights{grid-template-columns:1fr}
-  .cards,#browseList{grid-template-columns:1fr;gap:13px}
-  .dist{height:310px;min-height:310px}
-  .heatmap{grid-template-columns:minmax(104px,1.1fr) repeat(3,1fr);gap:5px}
-  .hmhead,.hmcell,.hmlabel{min-height:38px}
-  .hmhead{font-size:10px}
-  .hmlabel,.hmcell{font-size:11px}
-  section.block{padding:30px 0}
-  .panel{padding:18px}
-  .dhero .big{font-size:40px}
-  .spark{height:250px;min-height:250px}
-  .chartgrid{grid-template-columns:1fr;gap:14px}
-  .chartcard{min-height:0;padding:16px}
-  .chartbox{height:210px}
-  .chartbox.tall{height:248px}
-  .tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
-  .tools .search{min-width:0}
-  .tools select.pick{min-width:0;max-width:150px}
-  .filterbar{position:static;padding:12px 13px;gap:10px 12px}
-  .filterbar .fgroup{width:100%;flex-wrap:wrap}
-  .filterbar .flabel{width:100%}
-  .filterbar .spacer{display:none}
-  .filterbar select.pick{flex:1;min-width:120px}
-  .bandjump{padding:15px 14px 14px}
-  .jumprow{gap:8px}
-  .jumpnode .jn{font-size:15px;white-space:nowrap}
-  .jumpnode .jl{font-size:9px}
-  .jumparrow{min-width:38px;height:30px}
-  .jumparrow .jgain{font-size:10px;padding:1px 7px}
-  .legend{gap:11px;font-size:11.5px}
-}
-@media(max-width:360px){
-  .wrap{padding:0 14px}
-  .bar .wrap{gap:4px}
-  .logo{font-size:16px}
-  .nav button{font-size:12.5px;padding:7px 8px}
-}
-@media(prefers-reduced-motion:reduce){
-  *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
-  .barfill,.dist .dbar,.cmp .cbar,.vbar{transition:none!important}
-}
-</style></head>
-<body>
-<header class="bar"><div class="wrap">
-  <a class="logo" href="?" onclick="goHome(event)">Prep<b>Signals</b><span class="dot"></span></a>
-  <nav class="nav">
-    <button id="nav-plan" class="on" onclick="showView('plan')"><span class="navfull">My Score Path</span><span class="navshort">Path</span></button>
-    <button id="nav-explore" onclick="showView('explore')"><span class="navfull">Explore the data</span><span class="navshort">Explore</span></button>
-    <button id="nav-about" onclick="showView('about')">About</button>
-  </nav>
-</div></header>
-
-<main id="view-plan">
-  <div class="wrap">
-    <section class="hero">
-      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
-      <span class="eyebrow"><span class="pulse"></span>__NDEB__ real GMAT debriefs</span>
-      <h1>Your <em>score path</em>, from people who already made the jump</h1>
-      <p class="lede">Four quick taps. We match you with real stories from people who started where you are and hit your target — then turn them into a plan.</p>
-    </section>
-    <div class="quiz" id="quiz"></div>
-    <div id="planResult"></div>
-  </div>
-</main>
-
-<main id="view-explore" class="hidden">
-  <div class="wrap">
-    <section class="hero" style="padding:44px 0 4px">
-      <span class="blob b1"></span><span class="blob b2"></span>
-      <span class="eyebrow"><span class="pulse"></span>__NDEB__ real GMAT debriefs</span>
-      <h1>Explore <em>the data</em></h1>
-      <p class="lede">Every debrief, charted. Filter it, tap any bar to open the stories behind it, and read the takeaway under each chart.</p>
-    </section>
-  </div>
-
-  <div class="wrap">
-    <div class="filterbar" id="filterbar"></div>
-    <div class="statrow" id="xstat"></div>
-
-    <div class="kicker" style="margin-top:8px"><span class="kdot" style="background:var(--primary)"></span>Scores</div>
-    <div class="chartgrid">
-      <div class="chartcard rise">
-        <h3>Score distribution <span class="hint" id="xdistHint"></span></h3>
-        <p class="psub">Official total score across the filtered set.</p>
-        <div class="chartbox" id="xdist"></div>
-        <div class="takeaway hidden" id="xdistTake"></div>
-      </div>
-      <div class="chartcard rise">
-        <h3>Where each tier is weakest</h3>
-        <p class="psub">Median Q / V / DI score within each target band.</p>
-        <div class="chartbox" id="xsection"></div>
-        <div class="legend" id="xsectionLeg"></div>
-        <div class="takeaway hidden" id="xsectionTake"></div>
-      </div>
-    </div>
-
-    <div class="kicker"><span class="kdot" style="background:var(--coral)"></span>The jump</div>
-    <div class="chartgrid">
-      <div class="chartcard rise">
-        <h3>How big a jump is realistic? <span class="hint">tap a bar for the stories</span></h3>
-        <p class="psub">Start-to-official point gain, where a start score was reported.</p>
-        <div class="chartbox" id="xgain"></div>
-        <div class="takeaway hidden" id="xgainTake"></div>
-      </div>
-      <div class="chartcard rise">
-        <h3>Prep time vs score gain</h3>
-        <p class="psub">Each dot is a debrief; the dashed line is the overall trend.</p>
-        <div class="chartbox tall" id="xscatter"></div>
-        <div class="takeaway hidden" id="xscatterTake"></div>
-      </div>
-    </div>
-
-    <div class="kicker"><span class="kdot" style="background:var(--green)"></span>Time &amp; attempts</div>
-    <div class="chartgrid">
-      <div class="chartcard rise">
-        <h3>Does more prep time help? <span class="hint">tap a bar for the stories</span></h3>
-        <p class="psub">Median total score by weeks of prep.</p>
-        <div class="chartbox" id="xprep"></div>
-        <div class="takeaway hidden" id="xprepTake"></div>
-      </div>
-      <div class="chartcard rise">
-        <h3>Do retakes pay off? <span class="hint">tap a bar for the stories</span></h3>
-        <p class="psub">Median official score by attempt number, where reported.</p>
-        <div class="chartbox" id="xattempts"></div>
-        <div class="takeaway hidden" id="xattemptsTake"></div>
-      </div>
-    </div>
-
-    <div class="kicker"><span class="kdot" style="background:var(--amber)"></span>What they used</div>
-    <div class="chartgrid">
-      <div class="chartcard rise">
-        <h3>Most-used resources <span class="hint">tap a row for the stories</span></h3>
-        <p class="psub">Share of debriefs naming each — popularity, not proof of effectiveness.</p>
-        <div class="hbarbox" id="xres"></div>
-        <div class="takeaway hidden" id="xresTake"></div>
-      </div>
-      <div class="chartcard rise">
-        <h3>Self-study vs paid course <span class="hint">tap a column for the stories</span></h3>
-        <p class="psub">Self-study = only free material (Official Guide, official mocks, GMAT Club…).</p>
-        <div class="duel" id="xcompare"></div>
-        <div class="takeaway hidden" id="xcompareTake"></div>
-      </div>
-    </div>
-
-    <div class="kicker"><span class="kdot" style="background:var(--violet)"></span>Tactics</div>
-    <div class="chartgrid one">
-      <div class="chartcard rise">
-        <h3>Tactic adoption by score band <span class="hint">tap a cell for examples</span></h3>
-        <p class="psub">Share of each band that mentions a recurring tactic.</p>
-        <div class="heatmap" id="xheat" style="margin-top:4px"></div>
-        <div class="takeaway hidden" id="xheatTake"></div>
-      </div>
-    </div>
-
-    <section class="block bleed" id="xbrowse" style="margin-top:34px">
-      <div class="kicker" style="margin-top:0"><span class="kdot" style="background:var(--green)"></span>Read the stories</div>
-      <div class="shead"><div>
-        <h2>Browse the filtered debriefs</h2>
-        <p class="sub" id="xbrowseSub"></p>
-      </div></div>
-      <div class="tools">
-        <div class="search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <input id="xq" type="search" placeholder="Search titles or resources…" autocomplete="off"></div>
-        <select class="pick" id="xsort">
-          <option value="score">Highest score</option>
-          <option value="new">Newest first</option>
-          <option value="gain">Biggest gain</option>
-          <option value="detail">Most detailed</option>
-        </select>
-      </div>
-      <div id="xbrowseList" class="cards"></div>
-      <div class="empty hidden" id="xbrowseEmpty">No debriefs match. Clear the search box or use Reset in the filter bar.</div>
-      <button class="morebtn hidden" id="xbrowseMore" onclick="xShowMore()">Show more <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-    </section>
-  </div>
-</main>
-
-<section id="view-about" class="hidden"><div class="wrap about" style="padding-top:42px;padding-bottom:42px">
-  <h2>About PrepSignals</h2>
-  <p>PrepSignals turns hundreds of real GMAT debriefs into a simple question: <b>what did people who hit your target score actually do?</b> Answer four quick questions on My Score Path, or pick a score range under Explore the Data to see the tactics that show up most, the resources people leaned on, and the individual stories behind every number.</p>
-  <h3>Where the data comes from</h3>
-  <p>Every debrief links back to its original public post on Reddit's r/GMAT and GMAT Club. We only summarise — the source is always one tap away so you can read it in full and judge for yourself.</p>
-  <h3>Independence</h3>
-  <p>PrepSignals is independent and isn't affiliated with GMAC, any prep company, or any course. Resources are named because the original posters named them, not because anyone paid to appear. Debriefs that read like promotions are flagged "Maybe Promo" so you can weigh them.</p>
-  <h3>How to read the colors</h3>
-  <p>Colors mean the same thing everywhere on the site: <b>blue</b> is Quant, <b>purple</b> is Verbal, <b>teal</b> is Data Insights, <b>amber</b> is resources, <b>green</b> is timing and test-day execution, and <b>coral</b> is score gains.</p>
-  <h3>Privacy</h3>
-  <p>No accounts, no login, no backend. Your four answers and your checklist ticks on My Score Path are saved only in your own browser's local storage so a return visit picks up where you left off — nothing is sent to a server, and nothing identifies you. We use Vercel's privacy-friendly aggregate analytics to see which paths and stories are useful.</p>
-  <h3>Feedback</h3>
-  <p>If you want to see more features, notice something wrong, or have feedback, please email <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
-  <p>If you are the author of a post represented in this project and want it removed or corrected, contact <a href="mailto:prepsignals@gmail.com">prepsignals@gmail.com</a>.</p>
-  <p style="margin-top:18px;color:var(--ink-3)">Data spans __MINDATE__ to __MAXDATE__.</p>
-</div></section>
-
-<div class="detail" id="detail"><div class="dinner">
-  <div class="dtop"><div class="wrap">
-    <button class="backbtn" onclick="closeDebrief()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back</button>
-    <a class="logo" href="?" onclick="goHome(event)" style="font-size:17px">Prep<b>Signals</b><span class="dot"></span></a>
-  </div></div>
-  <div class="wrap" id="detailBody"></div>
-</div></div>
-
-<div class="cohort" id="cohort"><div class="dinner">
-  <div class="ctopbar"><div class="wrap">
-    <button class="backbtn" onclick="closeCohort()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back</button>
-    <a class="logo" href="?" onclick="goHome(event)" style="font-size:17px">Prep<b>Signals</b><span class="dot"></span></a>
-  </div></div>
-  <div class="wrap">
-    <div class="cohorthead">
-      <h2 id="cohortTitle"></h2>
-      <p id="cohortSub"></p>
-      <div class="cohortmeta" id="cohortMeta"></div>
-    </div>
-    <div class="cohortinsight hidden" id="cohortInsight"></div>
-    <details class="cohortexamples" id="cohortExamples">
-      <summary>
-        <div><h3 id="cohortExamplesTitle">Example debriefs</h3><p id="cohortExamplesSub"></p></div>
-        <span class="sumicon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
-      </summary>
-      <div class="cards" id="cohortCards"></div>
-    </details>
-  </div>
-</div></div>
-
-<footer><div class="wrap">
-  <span>PrepSignals — independent GMAT debrief signal. Not affiliated with GMAC.</span>
-  <span><a href="#" onclick="showView('about');return false">About &amp; sources</a></span>
-</div></footer>
-
-<script>
-const DEB=__DEB__, DETAILS=__DETAILS__, BANDS=__BANDS__, CURB=__CURB__, WEEKB=__WEEKB__, GAINB=__GAINB__, PREPB=__PREPB__, TT=__TOOLTIPS__;
+'use strict';
+/* data is loaded by data.js (deferred before this file) as window.__PS_DATA__ */
+const PSD=window.__PS_DATA__;
+const DEB=PSD.DEB, DETAILS=PSD.DETAILS, BANDS=PSD.BANDS, CURB=PSD.CURB, WEEKB=PSD.WEEKB, GAINB=PSD.GAINB, PREPB=PSD.PREPB, TT=PSD.TT;
 const RM=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const BANDC={b1:{c:'var(--blue)',d:'var(--blue)',l:'var(--blue-l)'},
             b2:{c:'var(--primary)',d:'var(--primary-d)',l:'var(--primary-l)'},
@@ -1037,7 +21,10 @@ let showIntakeForm=true;
 let exploreInit=false;
 let _justBuilt=false;
 
-function track(name,props){try{if(typeof window.va==='function')window.va('event',{name,data:props||{}});}catch(e){}}
+function track(name,props){
+  try{if(typeof window.va==='function')window.va('event',{name,data:props||{}});}catch(e){}
+  try{if(window.posthog&&typeof posthog.capture==='function')posthog.capture(name,props||{});}catch(e){}
+}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function inBand(d,b){return d.total!=null&&d.total>=b.lo&&d.total<=b.hi;}
 function bandOf(key){return BANDS.find(b=>b.key===key);}
@@ -1162,7 +149,10 @@ function loadPlanLS(){
   }catch(e){}
   return null;
 }
-function savePlanLS(){try{localStorage.setItem(LS_KEY,JSON.stringify({cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus||'unsure'}));}catch(e){}}
+function savePlanLS(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify({cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus||'unsure'}));}catch(e){}
+  try{if(typeof cloudSavePlan==='function')cloudSavePlan();}catch(e){}
+}
 
 function peersFor(tgtKey,curKey){
   const b=bandOf(tgtKey),rows=debsIn(b),cur=curBucketOf(curKey);
@@ -1256,12 +246,11 @@ function renderQuiz(animate){
 function submitPlan(){
   if(!(plan.cur&&plan.tgt&&plan.wk&&plan.focus))return;
   savePlanLS();showIntakeForm=false;_justBuilt=true;
-  history.replaceState({},'', '?p='+plan.cur+'-'+plan.tgt+'-'+plan.wk+'-'+plan.focus);
+  try{if(typeof updateProfileFromPlan==='function')updateProfileFromPlan();}catch(e){}
   track('intake_submit',{cur:plan.cur,tgt:plan.tgt,wk:plan.wk,focus:plan.focus});
-  renderPlanView();
-  scrollTo({top:0,behavior:RM?'auto':'smooth'});
+  nav(planPath());
 }
-function editPlan(){showIntakeForm=true;quizStep=0;track('intake_edit',{});renderPlanView();}
+function editPlan(){showIntakeForm=true;quizStep=0;track('intake_edit',{});nav('/path');}
 
 function renderPlanView(){
   const q=document.getElementById('quiz'),r=document.getElementById('planResult');
@@ -1313,6 +302,7 @@ function renderPlanResult(){
       ${pace?`<div class="tkpace">${pace}</div>`:''}
       ${!matched?`<span class="tkflag">Few exact starting-score matches — showing everyone at your target</span>`:''}
     </section>
+    ${planSyncCardHTML()}
     <section class="primaryrec rise" id="doFirst" style="--pr:var(${prPair[0]});--pr-l:var(${prPair[1]})">
       <div>
         <span class="ey">Step 1 · Today</span>
@@ -1328,10 +318,11 @@ function renderPlanResult(){
       <div class="checkwrap rise">
         <div class="checkhead">
           <div><h3 style="font-size:19px">Step 2 · Your first week</h3>
-            <p style="font-size:13.5px;color:var(--ink-2);margin-top:3px">Four tasks pulled from what worked for people on your path. Ticks save on this device.</p></div>
+            <p style="font-size:13.5px;color:var(--ink-2);margin-top:3px">Four tasks pulled from what worked for people on your path.</p></div>
           <span class="chkcount" id="chkCount"></span>
         </div>
         <div class="checklist" id="planChecklist"></div>
+        <div class="chknote">${checkNoteHTML()}</div>
       </div>
     </section>
     <section class="block" id="planLevers">
@@ -1408,7 +399,7 @@ function renderPlanResult(){
 }
 function planAnalyticsShown(){
   return !!(plan.cur&&plan.tgt&&plan.wk&&plan.focus&&!showIntakeForm&&document.getElementById('planDist')
-    &&!document.getElementById('view-plan').classList.contains('hidden'));
+    &&!document.getElementById('view-path').classList.contains('hidden'));
 }
 function renderPlanAnalytics(){
   if(!plan.tgt)return;
@@ -1648,7 +639,9 @@ function renderChecklist(peers){
     <span class="txt">${t}</span></button>`).join('');
 }
 function toggleCheck(i){
+  if(!requireAuth('checklist','Sync planner progress','Keep checklist progress synced across devices.'))return;
   const done=loadChecks();done[i]=!done[i];saveChecks(done);renderChecklist();
+  try{cloudSaveChecks();}catch(e){}
   track('check_toggle',{i,on:!!done[i]});
   if(done[i]&&[0,1,2,3].every(k=>done[k]))confettiBurst(document.querySelector('.checkwrap'));
 }
@@ -1861,9 +854,10 @@ function xToggleSelf(){xf.self=!xf.self;xLimit=12;renderFilterBar();renderExplor
 function xReset(){xf={bands:new Set(),src:'',res:'',self:false};xLimit=12;renderFilterBar();renderExplore();}
 function openTargetExplore(){
   const b=bandOf(plan.tgt);
-  if(b){xf={bands:new Set([b.key]),src:'',res:'',self:false};state.band=b.key;xLimit=12;history.pushState({},'', '?band='+b.lo);}
-  showView('explore');
-  renderFilterBar();renderExplore();
+  if(b){xf={bands:new Set([b.key]),src:'',res:'',self:false};state.band=b.key;xLimit=12;}
+  const was=exploreInit;
+  nav(b?'/explore/'+BAND_SLUG[b.key]:'/explore');
+  if(was){renderFilterBar();renderExplore();}
   if(b)track('plan_explore_target',{band:b.label});
 }
 function renderXStat(rows){
@@ -2014,6 +1008,7 @@ function renderXBrowse(rows){
 }
 function xShowMore(){xLimit+=12;renderXBrowse(xFiltered());track('x_more',{n:xLimit});}
 function renderExplore(){
+  syncExploreURL();
   const rows=xFiltered();
   const cnt=document.getElementById('xfCount');if(cnt)cnt.innerHTML=`<b>${rows.length}</b> of ${DEB.length}`;
   renderXStat(rows);
@@ -2140,6 +1135,7 @@ function timelineSVG(det){
       ${grid}<path class="timelinearea" d="${area}"/><path class="timelinepath" d="${line}"/>${dots}</svg></div>`;
 }
 function openDebrief(id,push){
+  if(push){nav('/debrief/'+id);return;}  /* the route is the source of truth */
   const d=DEB.find(x=>x.id===id);if(!d)return;
   const det=DETAILS[id]||{};
   const cm={Q:'var(--blue)',V:'var(--violet)',DI:'var(--teal)',G:'var(--primary)'};
@@ -2169,7 +1165,10 @@ function openDebrief(id,push){
   document.getElementById('detailBody').innerHTML=`
     <div class="dhero">
       <div class="dscore"><span class="big">${d.total}<small>/ 805</small></span>
-        ${(d.tags||[]).map(t=>t==='Maybe Promo'?'<span class="tag promo">Maybe promo</span>':t==='Self Study'?'<span class="tag self">Self study</span>':'').join('')}</div>
+        ${(d.tags||[]).map(t=>t==='Maybe Promo'?'<span class="tag promo">Maybe promo</span>':t==='Self Study'?'<span class="tag self">Self study</span>':'').join('')}
+        <button class="savebtn ${isSaved(id)?'on':''}" id="saveBtn-${id}" onclick="toggleSave('${id}')" style="margin-left:auto">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 3.5h12V21l-6-4.2L6 21z"/></svg>
+          <span>${isSaved(id)?'Saved':'Save'}</span></button></div>
       <h1>${esc(d.title)}</h1>
       <div class="dmeta">${meta.join('')}</div>
     </div>
@@ -2188,14 +1187,15 @@ function openDebrief(id,push){
   dt.classList.add('on');document.body.style.overflow='hidden';
   dt.scrollTop=0;
   observeGrow(dt);
-  if(push)history.pushState({d:id},'', '?d='+id);
   track('debrief_open',{id,score:d.total,source:d.source});
 }
 function closeDebrief(){
-  if(history.state&&history.state.d){history.back();}else{doClose();}
+  if(_detailPushed){history.back();}  /* popstate → applyRoute closes the overlay */
+  else nav(_lastBasePath||'/explore',{replace:true});
 }
 function doClose(){
   const dt=document.getElementById('detail');
+  if(!dt.classList.contains('on'))return;
   dt.classList.remove('on');
   document.body.style.overflow=document.getElementById('cohort').classList.contains('on')?'hidden':'';
   setTimeout(()=>{if(!dt.classList.contains('on'))document.getElementById('detailBody').innerHTML='';},300);
@@ -2211,21 +1211,182 @@ function initExplore(){
   renderFilterBar();renderExplore();
   observeGrow(document.getElementById('view-explore'));
 }
-function showView(v){
-  document.getElementById('view-plan').classList.toggle('hidden',v!=='plan');
-  document.getElementById('view-explore').classList.toggle('hidden',v!=='explore');
-  document.getElementById('view-about').classList.toggle('hidden',v!=='about');
-  document.getElementById('nav-plan').classList.toggle('on',v==='plan');
-  document.getElementById('nav-explore').classList.toggle('on',v==='explore');
-  document.getElementById('nav-about').classList.toggle('on',v==='about');
-  if(v==='explore')initExplore();
-  if(v==='plan')renderPlanView();
-  if(v==='about')track('about_open',{});
-  scrollTo(0,0);
+/* ================= v.20 ROUTER — real paths, pushState, back/forward ================= */
+const FILE_MODE=location.protocol==='file:';
+const CUR_SLUG={c1:'under-605',c2:'605',c3:'655',c4:'695-plus'};
+const TGT_SLUG={b1:'655',b2:'705',b3:'755'};
+const WK_SLUG={w1:'under-4-weeks',w2:'4-7-weeks',w3:'8-12-weeks',w4:'13-plus-weeks'};
+const FOCUS_SLUG={q:'quant',v:'verbal',di:'data-insights',timing:'timing',unsure:'not-sure'};
+const BAND_SLUG={b1:'655-695',b2:'705-745',b3:'755-805'};
+let currentView='path',currentMeSub=null,_lastBasePath=null,_lastBaseSig=null,_detailPushed=false,_firstRoute=true;
+
+function keyBySlug(map,slug){for(const k in map)if(map[k]===slug)return k;return null;}
+function planComplete(){return !!(plan.cur&&plan.tgt&&plan.wk&&plan.focus);}
+function planPath(){return '/path/'+CUR_SLUG[plan.cur]+'-to-'+TGT_SLUG[plan.tgt]+'/'+WK_SLUG[plan.wk]+'/'+FOCUS_SLUG[plan.focus||'unsure'];}
+function bandBySlug(slug){
+  let k=keyBySlug(BAND_SLUG,slug);
+  if(!k){const lo=parseInt(slug,10);const b=BANDS.find(x=>x.lo===lo);if(b)k=b.key;} /* accepts /explore/705 and /explore/705-anything */
+  return k?bandOf(k):null;
 }
-function goHome(e){if(e)e.preventDefault();if(document.getElementById('detail').classList.contains('on'))doClose();
-  if(document.getElementById('cohort').classList.contains('on'))closeCohort();
-  history.pushState({},'', '?');showView('plan');scrollTo(0,0);}
+function currentPath(){
+  if(FILE_MODE)return location.hash.replace(/^#/,'')||'/';
+  let p=location.pathname||'/';
+  if(/\.html$/i.test(p))p='/';
+  return p;
+}
+function parseRoute(){
+  const raw=currentPath().split('/').filter(Boolean).map(decodeURIComponent);
+  const segs=raw.map(s=>s.toLowerCase());
+  const r={view:'path',plan:null,band:null,debrief:null,meSub:null,accountSub:null};
+  if(!segs.length)return r;
+  if(segs[0]==='debrief'&&raw[1]){r.view='debrief';r.debrief=raw[1];return r;}
+  if(segs[0]==='explore'){r.view='explore';if(segs[1])r.band=bandBySlug(segs[1]);return r;}
+  if(segs[0]==='about'){r.view='about';return r;}
+  if(segs[0]==='terms'){r.view='terms';return r;}
+  if(segs[0]==='privacy'){r.view='privacy';return r;}
+  if(segs[0]==='auth'){r.view='auth';r.authSub=segs[1]||'';return r;}
+  if(segs[0]==='admin'){r.view='admin';r.adminSub=(segs[1]==='funnels'?'events':segs[1])||'';return r;}
+  if(segs[0]==='account'){r.view='account';r.accountSub=(segs[1]==='security'?'security':'profile');return r;}
+  if(segs[0]==='me'){r.view='me';if(segs[1]==='progress'||segs[1]==='saved')r.meSub=segs[1];return r;}
+  if(segs[0]==='path'&&segs[1]&&segs[1].includes('-to-')){
+    const i=segs[1].lastIndexOf('-to-');
+    const cur=keyBySlug(CUR_SLUG,segs[1].slice(0,i)),tgt=keyBySlug(TGT_SLUG,segs[1].slice(i+4));
+    const wk=segs[2]?keyBySlug(WK_SLUG,segs[2]):null,f=segs[3]?keyBySlug(FOCUS_SLUG,segs[3]):null;
+    if(cur&&tgt)r.plan={cur,tgt,wk:wk||'w3',focus:f||'unsure'};
+  }
+  return r;
+}
+function baseSig(r){
+  if(r.view==='path')return 'path|'+(r.plan?[r.plan.cur,r.plan.tgt,r.plan.wk,r.plan.focus].join('-'):'intake');
+  if(r.view==='explore')return 'explore|'+(r.band?r.band.key:'');
+  if(r.view==='me')return 'me|'+(r.meSub||'');
+  if(r.view==='account')return 'account|'+(r.accountSub||'profile');
+  if(r.view==='admin')return 'admin|'+(r.adminSub||'');
+  return r.view;
+}
+function routeTitle(r){
+  if(r.view==='debrief'){const d=DEB.find(x=>x.id===r.debrief);
+    return d?d.total+' GMAT debrief — PrepSignals':'PrepSignals';}
+  if(r.view==='explore')return r.band?'Explore '+r.band.label+' — PrepSignals':'Explore the data — PrepSignals';
+  if(r.view==='about')return 'About — PrepSignals';
+  if(r.view==='terms')return 'Terms of Service — PrepSignals';
+  if(r.view==='privacy')return 'Privacy Policy — PrepSignals';
+  if(r.view==='admin')return 'Admin — PrepSignals';
+  if(r.view==='account')return r.accountSub==='security'?'Password & security — PrepSignals':'Profile — PrepSignals';
+  if(r.view==='me')return r.meSub==='progress'?'Review log — PrepSignals':r.meSub==='saved'?'Saved debriefs — PrepSignals':'Study Planner — PrepSignals';
+  if(r.plan){const c=curBucketOf(r.plan.cur),b=bandOf(r.plan.tgt);
+    if(c&&b)return c.label+' → '+b.label+' score path — PrepSignals';}
+  return 'PrepSignals — your personal GMAT score plan';
+}
+function writeURL(path,replace){
+  if(FILE_MODE){ /* opened as a local file: fall back to #/hash routing */
+    if(replace)location.replace(location.pathname+location.search+'#'+path);
+    else location.hash=path;
+    return;
+  }
+  try{if(replace)history.replaceState({},'',path);else history.pushState({},'',path);}catch(e){}
+}
+function nav(path,opts){
+  opts=opts||{};
+  writeURL(path,opts.replace);
+  if(!FILE_MODE)applyRoute();  /* FILE_MODE: the hashchange event triggers applyRoute */
+}
+function applyRoute(){
+  let r=parseRoute();
+  closeCohort();
+  if(r.view==='debrief'){
+    if(!DEB.some(x=>x.id===r.debrief)){nav('/explore',{replace:true});return;}
+    document.title=routeTitle(r);
+    if(_firstRoute){showView('explore');_lastBaseSig='explore|';_lastBasePath='/explore';}
+    _detailPushed=!_firstRoute;
+    _firstRoute=false;
+    openDebrief(r.debrief,false);
+    return;
+  }
+  doClose();
+  /* /auth/confirm and /auth/reset are side-effect routes: land on /me, let auth.js take over */
+  if(r.view==='auth'){
+    const sub=r.authSub;
+    writeURL('/me',true);
+    if(typeof onAuthDeepLink==='function')onAuthDeepLink(sub);
+    r=parseRoute();
+  }
+  /* canonicalize bare / and /path: a complete plan gets its shareable URL back */
+  if(r.view==='path'){
+    if(r.plan){plan={cur:r.plan.cur,tgt:r.plan.tgt,wk:r.plan.wk,focus:r.plan.focus};showIntakeForm=false;savePlanLS();}
+    else if(planComplete()&&!showIntakeForm)writeURL(planPath(),true);
+    else if(currentPath()!=='/path')writeURL('/path',true);
+    r=parseRoute();
+  }
+  document.title=routeTitle(r);
+  const sig=baseSig(r);
+  if(sig!==_lastBaseSig){ /* skip re-render when only an overlay opened/closed above this view */
+    if(r.view==='explore'){
+      if(r.band&&!(xf.bands.size===1&&xf.bands.has(r.band.key))){
+        xf.bands=new Set([r.band.key]);state.band=r.band.key;xLimit=12;
+        if(exploreInit){renderFilterBar();renderExplore();}
+      }
+      showView('explore');
+    }else if(r.view==='me'){
+      showView('me');renderMe(r.meSub);
+    }else if(r.view==='admin'){
+      showView('admin');if(typeof renderAdmin==='function')renderAdmin(r.adminSub);
+    }else if(r.view==='account'){
+      showView('account');if(typeof renderAccount==='function')renderAccount(r.accountSub);
+    }else if(r.view==='terms'||r.view==='privacy'){
+      showView(r.view);
+    }else if(r.view==='about'){
+      showView('about');if(!_firstRoute)track('about_open',{});
+      if(typeof refreshAboutFeedback==='function')refreshAboutFeedback();
+    }else{
+      showView('path');
+    }
+    if(!_firstRoute)scrollTo(0,0);
+  }
+  _lastBaseSig=sig;
+  _lastBasePath=currentPath();
+  _firstRoute=false;
+}
+function syncExploreURL(){ /* keep the URL honest as filters change: one band ⇒ /explore/<band> */
+  if(currentView!=='explore')return;
+  if(parseRoute().view==='debrief')return; /* explore is only the base under a debrief overlay — keep its URL */
+  const want=xf.bands.size===1?'/explore/'+BAND_SLUG[[...xf.bands][0]]:'/explore';
+  if(currentPath()!==want){
+    writeURL(want,true);
+    const r=parseRoute();
+    document.title=routeTitle(r);
+    _lastBaseSig=baseSig(r);
+    _lastBasePath=want;
+  }
+}
+const VIEWS=['path','explore','me','about','terms','privacy','admin','account'];
+function showView(v){
+  currentView=v;
+  VIEWS.forEach(k=>{
+    const el=document.getElementById('view-'+k);
+    if(el){
+      const active=k===v;
+      el.classList.toggle('hidden',!active);
+      el.hidden=!active;
+      el.setAttribute('aria-hidden',active?'false':'true');
+      if(active)el.removeAttribute('inert');else el.setAttribute('inert','');
+    }
+    const nb=document.getElementById('nav-'+k);if(nb)nb.classList.toggle('on',k===v);
+  });
+  if(v==='explore')initExplore();
+  if(v==='path')renderPlanView();
+}
+/* intercept in-app links; real hrefs keep cmd/ctrl-click and open-in-new-tab working */
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[data-nav]');
+  if(!a)return;
+  if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.defaultPrevented||e.button!==0)return;
+  e.preventDefault();
+  nav(a.getAttribute('href'));
+});
+if(FILE_MODE)window.addEventListener('hashchange',applyRoute);
+else window.addEventListener('popstate',applyRoute);
+
 /* re-render explore charts when crossing the compact breakpoint on resize/rotate */
 let _rsz;
 window.addEventListener('resize',()=>{clearTimeout(_rsz);_rsz=setTimeout(()=>{
@@ -2233,20 +1394,287 @@ window.addEventListener('resize',()=>{clearTimeout(_rsz);_rsz=setTimeout(()=>{
   if(planAnalyticsShown())renderPlanAnalytics();
 },220);});
 
-window.addEventListener('popstate',e=>{
-  const s=e.state||{};
-  if(s.d){openDebrief(s.d,false);}
-  else{doClose();
-    const p=new URLSearchParams(location.search);
-    if(p.get('band')){const b=BANDS.find(x=>String(x.lo)===p.get('band'));if(b){const w=exploreInit;xf.bands=new Set([b.key]);showView('explore');if(w){renderFilterBar();renderExplore();}}}
-    else if(!p.get('p')){showView('plan');}
-  }
-});
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(document.getElementById('detail').classList.contains('on'))closeDebrief();
   else if(document.getElementById('cohort').classList.contains('on'))closeCohort();
 });
+
+/* ================= WORKSPACE — local-first library (no account required) ================= */
+const LS_SAVED='ps_saved_v1',LS_PROG='ps_progress_v1';
+let _toastT;
+function toast(msg){
+  const t=document.getElementById('toast');if(!t)return;
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(_toastT);_toastT=setTimeout(()=>t.classList.remove('on'),2600);
+}
+function loadSaved(){try{const a=JSON.parse(localStorage.getItem(LS_SAVED));
+  return Array.isArray(a)?a.filter(id=>DEB.some(d=>d.id===id)):[];}catch(e){return [];}}
+function saveSaved(a){try{localStorage.setItem(LS_SAVED,JSON.stringify(a));}catch(e){}}
+function isSaved(id){return loadSaved().includes(id);}
+function toggleSave(id){
+  if(!requireAuth('save_debrief','Save this debrief','Keep a synced reading queue for your planner.',{saveId:id}))return;
+  let a=loadSaved();const was=a.includes(id);
+  a=was?a.filter(x=>x!==id):[id].concat(a);
+  saveSaved(a);
+  try{cloudSaveDebrief(id,!was);}catch(e){}
+  const btn=document.getElementById('saveBtn-'+id);
+  if(btn){btn.classList.toggle('on',!was);const sp=btn.querySelector('span');if(sp)sp.textContent=was?'Save':'Saved';}
+  if(currentView==='me'&&currentMeSub==='saved')renderMe('saved');
+  toast(was?'Removed from your saved debriefs':(typeof cloudOK==='function'&&cloudOK()?'Saved to your account — find it in Planner':'Saved — find it in Planner'));
+  track('save_toggle',{id,on:!was});
+}
+function unsaveFromList(id){toggleSave(id);}
+function loadProg(){try{const a=JSON.parse(localStorage.getItem(LS_PROG));
+  return Array.isArray(a)?a.filter(x=>x&&x.total):[];}catch(e){return [];}}
+function saveProg(a){try{localStorage.setItem(LS_PROG,JSON.stringify(a));}catch(e){}}
+function addProgress(){
+  if(!requireAuth('progress','Save your review log','Log mocks, notes, and review tags across devices.'))return;
+  const g=id=>document.getElementById(id);
+  const total=parseInt(g('pgTotal').value,10);
+  if(!(total>=205&&total<=805)){toast('Total score should be between 205 and 805');return;}
+  const sec=k=>{const v=parseInt(g(k).value,10);return v>=60&&v<=90?v:null;};
+  const tags=[...document.querySelectorAll('input[name="pgTag"]:checked')].map(x=>x.value);
+  const notes=(g('pgNotes')&&g('pgNotes').value||'').trim();
+  const e={date:g('pgDate').value||new Date().toISOString().slice(0,10),
+    kind:g('pgKind').value==='official'?'official':'mock',
+    total,q:sec('pgQ'),v:sec('pgV'),di:sec('pgDI'),
+    section_focus:g('pgFocus').value||'',review_tags:tags,notes};
+  const a=loadProg();a.push(e);a.sort((x,y)=>String(x.date).localeCompare(String(y.date)));saveProg(a);
+  try{cloudSaveProgress();}catch(e2){}
+  track('progress_add',{kind:e.kind,total:e.total,n:a.length});
+  toast('Logged');
+  renderMe('progress');
+}
+function delProgress(i){const a=loadProg();a.splice(i,1);saveProg(a);try{cloudSaveProgress();}catch(e){}renderMe('progress');}
+function fmtDate(s){
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||''));if(!m)return esc(String(s||''));
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]+' '+(+m[3]);
+}
+const ARROW_SM='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+const CHECK_SM='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4.5 12.5l5 5L19.5 7"/></svg>';
+function plannerContext(){
+  const saved=loadSaved(),prog=loadProg(),has=planComplete();
+  const b=has?bandOf(plan.tgt):null,c=has?curBucketOf(plan.cur):null,wk=has?wkBucketOf(plan.wk):null,f=has?focusOf(plan.focus):null;
+  const peers=has?peersFor(plan.tgt,plan.cur).peers:[];
+  const checks=has?loadChecks():[],items=has?checklistItems(peers):[];
+  const nextIndex=items.findIndex((_,i)=>!checks[i]);
+  const last=prog.length?prog[prog.length-1]:null;
+  const weak=has?weakestSection(peers):null;
+  return{saved,prog,has,b,c,wk,f,peers,checks,items,nextIndex,last,weak};
+}
+function plannerProgressText(ctx){
+  if(!ctx.last)return 'No mock logged yet. Add your latest score so the planner can compare it with your target band.';
+  if(!ctx.has)return 'Latest logged score: '+ctx.last.total+'. Build a score path to turn this into a target-aware next step.';
+  const diff=ctx.b.lo-ctx.last.total;
+  if(diff>0)return 'Latest score '+ctx.last.total+' is '+diff+' points below '+ctx.b.label+'. Keep the next block narrow and review misses before adding new material.';
+  if(ctx.last.total>ctx.b.hi)return 'Latest score '+ctx.last.total+' is above '+ctx.b.label+'. Consider raising the target or tightening test-day execution.';
+  return 'Latest score '+ctx.last.total+' is inside '+ctx.b.label+'. Maintain the level and protect timing.';
+}
+function plannerTodayHTML(ctx){
+  const next=ctx.has&&ctx.nextIndex>=0?ctx.items[ctx.nextIndex]:'Build or reopen your score path so the planner can choose a real next step.';
+  const action=ctx.has?'<a href="'+planPath()+'" data-nav class="todaybtn">Open today\'s task '+ARROW_SM+'</a>':'<a href="/path" data-nav class="todaybtn">Build my path '+ARROW_SM+'</a>';
+  const done=ctx.has?ctx.checks.filter(Boolean).length:0;
+  return '<section class="todaycard rise">'+
+    '<div class="todaycopy"><span class="ey">Today</span><h2>'+(ctx.has?'Your next best step':'Start with a score path')+'</h2>'+
+    '<p>'+next+'</p><div class="todaymeta">'+
+    '<span>'+(ctx.has?esc(ctx.c.label)+' to '+esc(ctx.b.label):'4 quick answers')+'</span>'+
+    '<span>'+(ctx.has?done+' of '+ctx.items.length+' weekly tasks done':'No account needed to preview')+'</span>'+
+    '</div></div><div class="todayaction">'+action+'</div></section>';
+}
+function plannerAnswer(kind,ctx){
+  if(!ctx.has&&kind!=='read')return 'Build your score path first. The planner needs your current score, target, timeline, and bottleneck before it can make a useful recommendation.';
+  if(kind==='review'){
+    if(ctx.last&&ctx.last.notes)return 'Review your last note: "'+ctx.last.notes+'". Then tag the misses by section and mistake type before doing another timed set.';
+    return ctx.has?'Review the next unfinished checklist item and save one matching debrief before your next mock.':'Read a target-band debrief, then build a path so review advice can become specific.';
+  }
+  if(kind==='track'){
+    return plannerProgressText(ctx);
+  }
+  if(kind==='read'){
+    const pool=ctx.has?ctx.peers:debsIn(BANDS[1]);
+    const saved=ctx.saved;
+    const pick=bestExamples(pool.filter(d=>saved.indexOf(d.id)<0),1)[0]||bestExamples(pool,1)[0];
+    return pick?'Read "'+pick.title+'" because it is a high-signal debrief near '+(ctx.has?ctx.b.label:'the 705-745 band')+'.':'Open Explore and save one debrief worth revisiting.';
+  }
+  const sec=ctx.f&&ctx.f.key!=='unsure'?ctx.f.label:(ctx.weak?ctx.weak.name:'your weakest section');
+  if(ctx.nextIndex>=0)return 'Do this next: '+ctx.items[ctx.nextIndex].replace(/<[^>]*>/g,'')+' Keep it timed, then log what went wrong.';
+  return 'Your first-week checklist is complete. Log the next mock, then use the progress insight to choose the next section block. Start with '+sec+'.';
+}
+function plannerPromptMeta(kind,ctx){
+  const map={
+    today:['What should I do today?','Your next move',ctx.has?planPath():'/path',ctx.has?'Open today\'s task':'Build my path'],
+    review:['What should I review?','Review focus',ctx.has?(ctx.saved.length?'/me/saved':planPath()):'/path',ctx.saved.length?'Open saved debriefs':(ctx.has?'Open checklist':'Build my path')],
+    track:['Am I on track?','Progress check','/me/progress',ctx.last?'Open review log':'Log a score'],
+    read:['What should I read next?','Reading cue',ctx.saved.length?'/me/saved':'/explore',ctx.saved.length?'Open reading queue':'Find debriefs']
+  };
+  return map[kind]||map.today;
+}
+function plannerAnswerHTML(kind,ctx){
+  const m=plannerPromptMeta(kind,ctx);
+  return '<div class="botanswerTop"><span>'+esc(m[1])+'</span><b>'+esc(m[0])+'</b></div>'+
+    '<p>'+esc(plannerAnswer(kind,ctx))+'</p>'+
+    '<a href="'+m[2]+'" data-nav class="botanswerCta" onclick="track(\'planner_task_click\',{kind:\'assistant_'+kind+'\'})">'+esc(m[3])+' '+ARROW_SM+'</a>';
+}
+function plannerAssistantHTML(ctx){
+  const prompts=[['today','What should I do today?'],['review','What should I review?'],['track','Am I on track?'],['read','What should I read next?']];
+  return '<section class="plannerbot rise"><div class="bothead"><span class="botmark">PS</span><div><h2>Planner assistant</h2>'+
+    '<p>Rule-based guidance from your path, progress, checklist, saves, and the debrief dataset.</p></div></div>'+
+    '<div class="botchips" role="group" aria-label="Planner prompts">'+prompts.map(p=>'<button type="button" data-prompt="'+p[0]+'" class="'+(p[0]==='today'?'on':'')+'" aria-pressed="'+(p[0]==='today'?'true':'false')+'" onclick="plannerPrompt(\''+p[0]+'\')">'+p[1]+'</button>').join('')+'</div>'+
+    '<div class="botanswer" id="plannerAnswer" aria-live="polite">'+plannerAnswerHTML('today',ctx)+'</div></section>';
+}
+function plannerPrompt(kind){
+  const ctx=plannerContext(),el=document.getElementById('plannerAnswer');
+  document.querySelectorAll('.botchips button').forEach(b=>{
+    const on=b.dataset.prompt===kind;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-pressed',on?'true':'false');
+  });
+  if(el){
+    el.innerHTML=plannerAnswerHTML(kind,ctx);
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+  track('planner_prompt_click',{kind:kind,has_plan:ctx.has});
+}
+function plannerNudgeCardsHTML(ctx){
+  const planCard=ctx.has
+    ?`<a class="mecard rise" href="${planPath()}" data-nav style="--mc:var(--primary);--mcl:var(--primary-l)" onclick="track('planner_task_click',{kind:'plan'})">
+        <span class="k">Score path</span><h3>${esc(ctx.c.label)} to ${esc(ctx.b.label)}</h3>
+        <p>${esc(ctx.f.label)} focus. Reopen the evidence behind your path and keep the next block narrow.</p><span class="foot">Open path ${ARROW_SM}</span></a>`
+    :`<a class="mecard rise" href="/path" data-nav style="--mc:var(--primary);--mcl:var(--primary-l)" onclick="track('planner_task_click',{kind:'build_plan'})">
+        <span class="k">Score path</span><h3>No path yet</h3><p>Four quick taps turn the debrief dataset into a starting plan.</p><span class="foot">Build my path ${ARROW_SM}</span></a>`;
+  const checkCard=ctx.has
+    ?`<a class="mecard rise" href="${planPath()}" data-nav style="--mc:var(--green);--mcl:var(--green-l)" onclick="track('planner_task_click',{kind:'checklist'})">
+        <span class="k">Next task</span><h3>${ctx.nextIndex>=0?'Task '+(ctx.nextIndex+1):'Week complete'}</h3>
+        <p>${ctx.nextIndex>=0?ctx.items[ctx.nextIndex]:'Log your next mock and refresh the plan from real progress.'}</p><span class="foot">Open checklist ${ARROW_SM}</span></a>`
+    :`<a class="mecard rise" href="/path" data-nav style="--mc:var(--green);--mcl:var(--green-l)"><span class="k">First week</span><h3>Unlocks with your path</h3><p>The planner creates four first-week tasks once your path exists.</p><span class="foot">Start ${ARROW_SM}</span></a>`;
+  const progCard=`<a class="mecard rise" href="/me/progress" data-nav style="--mc:var(--coral);--mcl:var(--coral-l)" onclick="track('planner_task_click',{kind:'progress'})">
+        <span class="k">Progress</span><h3>${ctx.last?ctx.last.total+' · '+fmtDate(ctx.last.date):'No scores logged'}</h3>
+        <p>${esc(plannerProgressText(ctx))}</p><span class="foot">${ctx.last?'Open review log':'Log a score'} ${ARROW_SM}</span></a>`;
+  const savedCard=`<a class="mecard rise" href="${ctx.saved.length?'/me/saved':'/explore'}" data-nav style="--mc:var(--amber);--mcl:var(--amber-l)" onclick="track('planner_task_click',{kind:'saved'})">
+        <span class="k">Reading queue</span><h3>${ctx.saved.length?ctx.saved.length+' saved':'No saves yet'}</h3>
+        <p>${ctx.saved.length?'Use these debriefs as examples before your next review block.':'Save debriefs that match your path so the planner has a reading queue.'}</p>
+        <span class="foot">${ctx.saved.length?'Open saved':'Find stories'} ${ARROW_SM}</span></a>`;
+  return '<div class="megrid plangrid">'+planCard+checkCard+progCard+savedCard+'</div>';
+}
+function renderMe(sub){
+  currentMeSub=sub||null;
+  const el=document.getElementById('meBody');if(!el)return;
+  const gate=(typeof meAuthGateHTML==='function')?meAuthGateHTML(sub):null;
+  el.innerHTML=gate?gate:(sub==='progress'?meProgressHTML():sub==='saved'?meSavedHTML():meHomeHTML());
+  if(sub==='progress'){const d=document.getElementById('pgDate');if(d&&!d.value)d.value=new Date().toISOString().slice(0,10);}
+  observeGrow(el);
+}
+function meHomeHTML(){
+  const ctx=plannerContext();
+  const avatar=(typeof isLoggedIn==='function'&&isLoggedIn()&&typeof accountInitial==='function')?`<span class="meavatar" aria-hidden="true">${esc(accountInitial())}</span>`:'';
+  return `<section class="mehead plannerhead"><div class="mehero">${avatar}<div><h1>Study Planner</h1>
+      <p>${meHeadSub()}</p></div></div></section>
+    ${mePrepStageHTML()}
+    ${plannerTodayHTML(ctx)}
+    ${plannerAssistantHTML(ctx)}
+    ${plannerNudgeCardsHTML(ctx)}
+    ${meRecsHTML()}
+    <div style="height:46px"></div>`;
+}
+function meSavedHTML(){
+  const saved=loadSaved(),has=planComplete();
+  const b=has?bandOf(plan.tgt):null,c=has?curBucketOf(plan.cur):null;
+  const planRow=has?`<div class="synccard" style="margin-top:18px">
+      <span class="sico">${CHECK_SM}</span>
+      <span class="grow"><b>Saved score path:</b> ${esc(c.label)} → ${esc(b.label)}.</span>
+      <a href="${planPath()}" data-nav>Open plan</a></div>`:'';
+  const cells=saved.map(id=>{const d=DEB.find(x=>x.id===id);if(!d)return '';
+    return `<div class="savedcell rise">${debCardHTML(d)}
+      <button class="unsave" onclick="unsaveFromList('${id}')" aria-label="Remove from saved">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;}).join('');
+  return `<a class="mecrumb" href="/me" data-nav>← Study Planner</a>
+    <section class="mehead" style="padding-top:18px"><h1>Saved debriefs</h1>
+      <p>Debriefs you bookmarked to revisit${(typeof cloudOK==='function'&&cloudOK())?' — synced to your account':''}.</p></section>
+    ${planRow}
+    ${saved.length?`<div class="savedgrid">${cells}</div>`
+      :`<div class="panel meempty" style="margin-top:18px"><div class="big">🔖</div>
+        Nothing saved yet. Open any debrief and tap <b>Save</b> — it lands here.<br><br>
+        <a class="morebtn" href="/explore" data-nav style="margin-top:0">Explore the data ${ARROW_SM}</a></div>`}
+    <div style="height:46px"></div>`;
+}
+function meProgressHTML(){
+  const a=loadProg();
+  const entries=a.map((e,i)=>({e,i})).reverse().map(({e,i})=>{
+    const secs=[['q','Q'],['v','V'],['di','DI']].map(([k,lab])=>e[k]?`<b>${e[k]}</b> ${lab}`:'').filter(Boolean).join(' · ');
+    const tags=Array.isArray(e.review_tags)?e.review_tags:[];
+    const review=[e.section_focus?`<b>${esc(e.section_focus)}</b>`:'',tags.length?tags.map(esc).join(' · '):'',e.notes?esc(e.notes):''].filter(Boolean).join(' — ');
+    return `<div class="pentry">
+      <span class="pscore">${e.total}</span>
+      <span class="pkind ${e.kind==='official'?'official':'mock'}">${e.kind==='official'?'Official':'Mock'}</span>
+      <span class="pmeta">${fmtDate(e.date)}${secs?' · '+secs:''}${review?'<br><small>'+review+'</small>':''}</span>
+      <button class="pdel" onclick="delProgress(${i})" aria-label="Delete entry">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M9 7V5h6v2M8 7l1 13h6l1-13"/></svg></button>
+    </div>`;}).join('');
+  let target='';
+  if(planComplete()&&a.length){
+    const b=bandOf(plan.tgt),lastT=a[a.length-1].total,diff=b.lo-lastT;
+    target=`<div class="takeaway" style="margin-top:14px"><span class="tico">✦</span><span>${
+      diff>0?`Latest score <b>${lastT}</b> — <b>${diff} points</b> below your ${esc(b.label)} target band.`
+      :lastT>b.hi?`Latest score <b>${lastT}</b> — above your ${esc(b.label)} target band. Time to raise the target?`
+      :`Latest score <b>${lastT}</b> — inside your ${esc(b.label)} target band. Hold your level.`}</span></div>`;
+  }
+  return `<a class="mecrumb" href="/me" data-nav>← Study Planner</a>
+    <section class="mehead" style="padding-top:18px"><h1>Review log</h1>
+      <p>Log every mock and official score. The trend matters more than any single number.</p></section>
+    <div class="panel" style="margin-top:16px">
+      <h3>Log a score</h3>
+      <p class="psub">Total is required; section splits, review focus, and notes are optional.</p>
+      <div class="pform">
+        <label class="pfield">Date<input type="date" id="pgDate"></label>
+        <label class="pfield">Type<select id="pgKind"><option value="mock">Mock</option><option value="official">Official</option></select></label>
+        <label class="pfield">Total<input type="number" id="pgTotal" min="205" max="805" step="10" placeholder="645" inputmode="numeric"></label>
+        <label class="pfield">Q<input type="number" id="pgQ" min="60" max="90" placeholder="—" inputmode="numeric"></label>
+        <label class="pfield">V<input type="number" id="pgV" min="60" max="90" placeholder="—" inputmode="numeric"></label>
+        <label class="pfield">DI<input type="number" id="pgDI" min="60" max="90" placeholder="—" inputmode="numeric"></label>
+        <label class="pfield span2">Review focus<select id="pgFocus"><option value="">—</option><option>Quant</option><option>Verbal</option><option>Data Insights</option><option>Timing / test day</option></select></label>
+        <div class="pfield span4"><span>Mistake tags</span><div class="tagchecks">
+          <label><input type="checkbox" name="pgTag" value="Concept">Concept</label>
+          <label><input type="checkbox" name="pgTag" value="Timing">Timing</label>
+          <label><input type="checkbox" name="pgTag" value="Careless">Careless</label>
+          <label><input type="checkbox" name="pgTag" value="Stamina">Stamina</label>
+        </div></div>
+        <label class="pfield span6">Review note<textarea id="pgNotes" maxlength="600" placeholder="What caused the misses? What changes next?"></textarea></label>
+      </div>
+      <button class="paddbtn" style="margin-top:12px;width:100%" onclick="addProgress()">Add to my log</button>
+      ${target}
+    </div>
+    ${a.length>=2?progressChartHTML(a):''}
+    ${a.length?`<div class="panel" style="margin-top:16px"><h3>${a.length} ${a.length===1?'entry':'entries'}</h3>
+      <p class="psub">Newest first. Entries include optional review tags and notes.</p>
+      <div class="pentries">${entries}</div></div>`
+      :`<div class="panel meempty" style="margin-top:16px"><div class="big">📈</div>
+        No entries yet. Log your latest mock above — two entries draw your trend line.</div>`}
+    <div class="synccard"><span class="sico">${CHECK_SM}</span>
+      <span class="grow">${(typeof cloudOK==='function'&&cloudOK())?'<b>Your progress log is saved to your account</b> — the trend follows you across devices.':'<b>Your progress log is saved on this device.</b>'}</span></div>
+    <div style="height:46px"></div>`;
+}
+function progressChartHTML(a){
+  const W=760,H=300,padL=48,padR=30,padT=36,padB=44;
+  const xs=i=>padL+i*(W-padL-padR)/(a.length-1);
+  const vals=a.map(e=>e.total),rawLo=Math.min(...vals),rawHi=Math.max(...vals),mid=(rawLo+rawHi)/2;
+  const span=Math.max(60,rawHi-rawLo+36);
+  const lo=Math.max(205,Math.floor((mid-span/2)/10)*10),hi=Math.min(805,Math.ceil((mid+span/2)/10)*10);
+  const ys=v=>H-padB-(v-lo)/((hi-lo)||1)*(H-padT-padB);
+  const pts=a.map((e,i)=>[xs(i),ys(e.total)]);
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=line+' L '+pts[pts.length-1][0].toFixed(1)+' '+(H-padB)+' L '+pts[0][0].toFixed(1)+' '+(H-padB)+' Z';
+  const ticks=[lo,Math.round((lo+hi)/20)*10,hi].filter((v,i,arr)=>arr.indexOf(v)===i);
+  const grid=ticks.map(v=>`<line class="timelinegrid" x1="${padL}" x2="${W-padR}" y1="${ys(v).toFixed(1)}" y2="${ys(v).toFixed(1)}"/><text class="dlabel" x="10" y="${(ys(v)+4).toFixed(1)}">${v}</text>`).join('');
+  const step=Math.max(1,Math.ceil(a.length/8));
+  const xlab=pts.map((p,i)=>(i%step===0||i===a.length-1)?`<text class="dlabel" x="${p[0].toFixed(1)}" y="${H-16}" text-anchor="middle">${fmtDate(a[i].date)}</text>`:'').join('');
+  const dots=pts.map((p,i)=>`<circle class="timelinepoint" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="7"${a[i].kind==='official'?' style="stroke:var(--green)"':''}/><text class="timelabel" x="${p[0].toFixed(1)}" y="${Math.max(15,p[1]-14).toFixed(1)}" text-anchor="middle">${a[i].total}</text>`).join('');
+  return `<div class="panel timelinecard" style="margin-top:16px"><h3>Your score trend <span class="hint">green ring = official test</span></h3>
+    <svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="margin-top:8px" role="img" aria-label="Your logged scores over time">
+      ${grid}<path class="timelinearea" d="${area}"/><path class="timelinepath" d="${line}"/>${dots}${xlab}</svg></div>`;
+}
 
 /* ---------- scroll-in animation ---------- */
 let io;
@@ -2259,32 +1687,26 @@ function observeGrow(root){
     const r=el.getBoundingClientRect();if(r.top<innerHeight+40)el.classList.add('grown');});},1200);
 }
 
-/* ---------- init ---------- */
+/* ---------- init: legacy v.19 ?p / ?band / ?d deep links redirect to clean routes ---------- */
 (function init(){
-  const p=new URLSearchParams(location.search);
-  let startView='plan';
-  const pp=p.get('p');
+  if(!FILE_MODE&&'scrollRestoration' in history)history.scrollRestoration='manual';
+  const saved=loadPlanLS();
+  if(saved){plan=saved;showIntakeForm=false;}
+  const q=new URLSearchParams(location.search);
+  const pp=q.get('p');
   if(pp){
     const parts=pp.split('-');
     if((parts.length===3||parts.length===4)&&CURB.find(c=>c.key===parts[0])&&BANDS.find(b=>b.key===parts[1])&&WEEKB.find(w=>w.key===parts[2])){
       const focus=FOCUS.find(f=>f.key===parts[3])?parts[3]:'unsure';
       plan={cur:parts[0],tgt:parts[1],wk:parts[2],focus};showIntakeForm=false;savePlanLS();
+      writeURL(planPath(),true);
     }
-  }else{
-    const saved=loadPlanLS();
-    if(saved){plan=saved;showIntakeForm=false;}
+  }else if(q.get('band')){
+    const b=BANDS.find(x=>String(x.lo)===q.get('band'));
+    if(b)writeURL('/explore/'+BAND_SLUG[b.key],true);
+  }else if(q.get('d')){
+    const id=q.get('d');
+    if(DEB.some(x=>x.id===id))writeURL('/debrief/'+id,true);
   }
-  if(p.get('band')){
-    const b=BANDS.find(x=>String(x.lo)===p.get('band'));
-    if(b){state.band=b.key;xf.bands.add(b.key);startView='explore';}
-  }
-  showView(startView);
-  const did=p.get('d');
-  if(did&&DEB.find(x=>x.id===did)){openDebrief(did,false);history.replaceState({d:did},'', '?d='+did);}
+  applyRoute();
 })();
-</script>
-</body></html>"""
-
-
-if __name__ == "__main__":
-    main()
